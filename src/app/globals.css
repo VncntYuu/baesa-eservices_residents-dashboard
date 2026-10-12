@@ -1,26 +1,74 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Design tokens taken from the Barangay Baesa E-Services mockups. */
+@theme {
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+
+  --color-sidebar: #253930;
+  --color-sidebar-text: #cfe6d9;
+  --color-sidebar-active: #55b685;
+
+  --color-brand-50: #eef6f0;
+  --color-brand-100: #e2f1e6;
+  --color-brand-200: #c5e2cd;
+  --color-brand-400: #55b685;
+  --color-brand-500: #418054;
+  --color-brand-600: #366c47;
+  --color-brand-700: #2b5639;
+  --color-brand-900: #1d3a2b;
+
+  --color-page: #f0f4f1;
+  --color-ink: #1d2a24;
+  --color-muted: #68756e;
+  --color-line: #e3e9e5;
+
+  --color-status-red: #aa2e26;
+  --color-status-red-bg: #fbe5e3;
+  --color-status-amber: #a85923;
+  --color-status-amber-bg: #fcf1d2;
+  --color-status-green: #3c7e44;
+  --color-status-green-bg: #e2f5e7;
+  --color-status-gray: #5f6b65;
+  --color-status-gray-bg: #eceeed;
+  --color-status-blue: #2c5f9e;
+  --color-status-blue-bg: #e3effc;
+
+  --shadow-card: 0 1px 2px rgb(29 58 43 / 0.04), 0 4px 16px rgb(29 58 43 / 0.05);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-page);
+  color: var(--color-ink);
+}
+
+/* Native <dialog> styling */
+dialog::backdrop {
+  background: rgb(15 30 22 / 0.45);
+}
+
+/* Leaflet tweaks so the map sits nicely inside rounded cards */
+.leaflet-container {
+  font-family: inherit;
+  z-index: 0;
+}
+.leaflet-div-icon.report-pin,
+.leaflet-div-icon.picker-pin {
+  background: transparent;
+  border: none;
+}
+.leaflet-popup-content-wrapper {
+  border-radius: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
