@@ -40,9 +40,18 @@ export function CommunityReportsView() {
     [reports],
   );
 
-  const active = reports.filter((r) => r.status !== "Resolved");
-  const inRange = active.filter((r) => range === "all" || now - new Date(r.submittedAt).getTime() <= Number(range) * 86_400_000);
-  const visible = category === "All" ? inRange : inRange.filter((r) => r.category === category);
+  const inRange = useMemo(
+    () =>
+      reports.filter(
+        (r) => r.status !== "Resolved" && (range === "all" || now - new Date(r.submittedAt).getTime() <= Number(range) * 86_400_000),
+      ),
+    [reports, range, now],
+  );
+  // Memoized so the map only redraws its pins when the filtered set actually changes.
+  const visible = useMemo(
+    () => (category === "All" ? inRange : inRange.filter((r) => r.category === category)),
+    [inRange, category],
+  );
 
   const setTab = (t: Tab) => router.replace(`${pathname}?tab=${t}`, { scroll: false });
 

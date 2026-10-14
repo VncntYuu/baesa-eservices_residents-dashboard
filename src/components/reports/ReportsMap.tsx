@@ -1,13 +1,34 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-import { useMemo } from "react";
-import { MapContainer, Marker, Popup, TileLayer, ZoomControl } from "react-leaflet";
-import { StatusBadge } from "@/components/ui/StatusBadge";
-import { MAP_CONFIG, REPORT_CATEGORIES, categoryColor } from "@/lib/config/reports";
+import L from "leaflet";
+import { useEffect, useRef, useState } from "react";
+import { statusTone, toneClasses } from "@/components/ui/StatusBadge";
+import { MAP_CONFIG, categoryColor } from "@/lib/config/reports";
 import type { CommunityReport } from "@/lib/types";
 import { distanceMeters, formatDate } from "@/lib/utils";
-import { pinIcon } from "./mapIcons";
+import { MapImageryNotice } from "./MapImageryNotice";
+import { createBaseMap, escapeHtml, pinIcon } from "./mapIcons";
+
+function popupHtml(r: CommunityReport, nearby: number): string {
+  const badge = toneClasses[statusTone(r.status)].badge;
+  return `
+    <div class="min-w-52 font-sans">
+      <div class="flex items-center justify-between gap-3">
+        <p class="!m-0 text-base font-bold" style="color:${categoryColor(r.category)}">${escapeHtml(r.category)}</p>
+        <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${badge}">${escapeHtml(r.status)}</span>
+      </div>
+      <p class="!my-1 text-sm font-semibold text-ink">${escapeHtml(r.title)}</p>
+      <p class="!my-0 text-xs text-muted">${escapeHtml(r.location.label)} · ${formatDate(r.submittedAt)}${
+        nearby > 0 ? ` · ${nearby} similar nearby` : ""
+      }</p>
+      ${
+        r.isMine
+          ? `<button type="button" data-view-report class="mt-2 text-sm font-semibold text-brand-500 hover:underline">View details →</button>`
+          : ""
+      }
+    </div>`;
+}
 
 export default function ReportsMap({
   reports,
@@ -16,66 +37,62 @@ export default function ReportsMap({
   reports: CommunityReport[];
   onViewDetails: (report: CommunityReport) => void;
 }) {
-  const icons = useMemo(() => {
-    const m = new Map<string, ReturnType<typeof pinIcon>>();
-    for (const c of REPORT_CATEGORIES) {
-      m.set(c.value, pinIcon(c.color));
-      m.set(`${c.value}:mine`, pinIcon(c.color, { ring: true, size: 34 }));
-    }
-    return m;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const layerRef = useRef<L.LayerGroup | null>(null);
+  const onViewRef = useRef(onViewDetails);
+  const [tilesFailed, setTilesFailed] = useState(false);
+
+  useEffect(() => {
+    onViewRef.current = onViewDetails;
+  });
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const map = createBaseMap(el, () => setTilesFailed(true));
+    layerRef.current = L.layerGroup().addTo(map);
+    return () => {
+      map.remove();
+      layerRef.current = null;
+    };
   }, []);
 
-  // Count nearby reports of the same category (information only — never merged automatically).
-  const nearbyCount = (r: CommunityReport) =>
-    reports.filter((o) => o.id !== r.id && o.category === r.category && distanceMeters(o.location, r.location) <= MAP_CONFIG.nearbyRadiusMeters).length;
+  useEffect(() => {
+    const layer = layerRef.current;
+    if (!layer) return;
+    layer.clearLayers();
+    for (const r of reports) {
+      // Count nearby reports of the same category (information only — never merged automatically).
+      const nearby = reports.filter(
+        (o) => o.id !== r.id && o.category === r.category && distanceMeters(o.location, r.location) <= MAP_CONFIG.nearbyRadiusMeters,
+      ).length;
+      const marker = L.marker([r.location.lat, r.location.lng], {
+        icon: pinIcon(categoryColor(r.category), r.isMine ? { ring: true, size: 34 } : {}),
+        title: `${r.category}: ${r.title}`,
+        alt: `${r.category} report`,
+        keyboard: true,
+      }).bindPopup(popupHtml(r, nearby), { minWidth: 220 });
+      marker.on("popupopen", (e: L.PopupEvent) => {
+        e.popup
+          .getElement()
+          ?.querySelector("[data-view-report]")
+          ?.addEventListener("click", () => {
+            marker.closePopup();
+            onViewRef.current(r);
+          });
+      });
+      marker.addTo(layer);
+    }
+  }, [reports]);
 
   return (
-    <MapContainer
-      center={[MAP_CONFIG.center.lat, MAP_CONFIG.center.lng]}
-      zoom={MAP_CONFIG.defaultZoom}
-      className="size-full"
-      scrollWheelZoom={false}
-      zoomControl={false}
-    >
-      <TileLayer url={MAP_CONFIG.tileUrl} attribution={MAP_CONFIG.tileAttribution} />
-      <ZoomControl position="topright" />
-      {reports.map((r) => {
-        const near = nearbyCount(r);
-        return (
-          <Marker
-            key={r.id}
-            position={[r.location.lat, r.location.lng]}
-            icon={icons.get(r.isMine ? `${r.category}:mine` : r.category)}
-            title={`${r.category}: ${r.title}`}
-            keyboard
-          >
-            <Popup>
-              <div className="min-w-52 font-sans">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-base font-bold" style={{ color: categoryColor(r.category) }}>
-                    {r.category}
-                  </p>
-                  <StatusBadge status={r.status} />
-                </div>
-                <p className="!my-1 text-sm font-semibold text-ink">{r.title}</p>
-                <p className="!my-0 text-xs text-muted">
-                  {r.location.label} · {formatDate(r.submittedAt)}
-                  {near > 0 && ` · ${near} similar nearby`}
-                </p>
-                {r.isMine && (
-                  <button
-                    type="button"
-                    onClick={() => onViewDetails(r)}
-                    className="mt-2 text-sm font-semibold text-brand-500 hover:underline"
-                  >
-                    View details →
-                  </button>
-                )}
-              </div>
-            </Popup>
-          </Marker>
-        );
-      })}
-    </MapContainer>
+    <div className="relative size-full">
+      <div ref={containerRef} className="size-full" />
+      {tilesFailed && (
+        <MapImageryNotice className="top-3 left-3 right-16 sm:right-auto">
+          Map imagery can&apos;t load here. Pins are placed at each report&apos;s recorded coordinates.
+        </MapImageryNotice>
+      )}
+    </div>
   );
 }

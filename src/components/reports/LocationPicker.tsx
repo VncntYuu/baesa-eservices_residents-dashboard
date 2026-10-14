@@ -1,20 +1,15 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-import type { Map as LeafletMap } from "leaflet";
+import L from "leaflet";
 import { LoaderCircle, LocateFixed, MapPin, Search } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
-import { Circle, CircleMarker, MapContainer, Marker, TileLayer, Tooltip, ZoomControl, useMapEvents } from "react-leaflet";
+import { useEffect, useRef, useState } from "react";
 import { MAP_CONFIG, categoryColor } from "@/lib/config/reports";
 import { reverseGeocode, searchPlaces, type GeocodeResult } from "@/lib/services/geocoding";
 import type { CommunityReport, GeoLocation } from "@/lib/types";
 import { cn, formatCoords } from "@/lib/utils";
-import { pinIcon } from "./mapIcons";
-
-function ClickToPlace({ onPick }: { onPick: (lat: number, lng: number) => void }) {
-  useMapEvents({ click: (e) => onPick(e.latlng.lat, e.latlng.lng) });
-  return null;
-}
+import { MapImageryNotice } from "./MapImageryNotice";
+import { createBaseMap, escapeHtml, pinIcon } from "./mapIcons";
 
 export default function LocationPicker({
   value,
@@ -27,16 +22,20 @@ export default function LocationPicker({
   otherReports: CommunityReport[];
   invalid?: boolean;
 }) {
-  const [map, setMap] = useState<LeafletMap | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const othersRef = useRef<L.LayerGroup | null>(null);
+  const pinRef = useRef<{ marker: L.Marker; circle: L.Circle } | null>(null);
+  const placePinRef = useRef<(lat: number, lng: number) => void>(() => {});
+  const lookupId = useRef(0);
+
+  const [tilesFailed, setTilesFailed] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GeocodeResult[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
   const [lookingUp, setLookingUp] = useState(false);
   const [geoError, setGeoError] = useState("");
-  const lookupId = useRef(0);
-
-  const icon = useMemo(() => pinIcon("#418054", { size: 40, className: "picker-pin" }), []);
 
   const placePin = async (lat: number, lng: number, knownLabel?: string) => {
     const id = ++lookupId.current;
@@ -54,6 +53,86 @@ export default function LocationPicker({
     }
   };
 
+  // Leaflet handlers are registered once, so they call the latest placePin through a ref.
+  useEffect(() => {
+    placePinRef.current = (lat, lng) => void placePin(lat, lng);
+  });
+
+  // Create the map once.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const map = createBaseMap(el, () => setTilesFailed(true));
+    othersRef.current = L.layerGroup().addTo(map);
+    map.on("click", (e: L.LeafletMouseEvent) => placePinRef.current(e.latlng.lat, e.latlng.lng));
+    mapRef.current = map;
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      othersRef.current = null;
+      pinRef.current = null;
+    };
+  }, []);
+
+  // Other residents' active reports, shown as small dots for context.
+  useEffect(() => {
+    const layer = othersRef.current;
+    if (!layer) return;
+    layer.clearLayers();
+    for (const r of otherReports) {
+      L.circleMarker([r.location.lat, r.location.lng], {
+        radius: 5,
+        color: "#fff",
+        weight: 1.5,
+        fillColor: categoryColor(r.category),
+        fillOpacity: 0.9,
+      })
+        .bindTooltip(escapeHtml(`${r.category}: ${r.title}`))
+        .addTo(layer);
+    }
+  }, [otherReports]);
+
+  // The resident's draggable pin and the "nearby" radius around it.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!value) {
+      pinRef.current?.marker.remove();
+      pinRef.current?.circle.remove();
+      pinRef.current = null;
+      return;
+    }
+    const ll: L.LatLngTuple = [value.lat, value.lng];
+    if (pinRef.current) {
+      pinRef.current.marker.setLatLng(ll);
+      pinRef.current.circle.setLatLng(ll);
+      return;
+    }
+    const circle = L.circle(ll, {
+      radius: MAP_CONFIG.nearbyRadiusMeters,
+      color: "#418054",
+      weight: 1.5,
+      dashArray: "6 6",
+      fillColor: "#418054",
+      fillOpacity: 0.08,
+      interactive: false,
+    }).addTo(map);
+    const marker = L.marker(ll, {
+      icon: pinIcon("#418054", { size: 40, className: "picker-pin" }),
+      draggable: true,
+      keyboard: true,
+      title: "Report location. Drag to adjust.",
+      alt: "Report location pin",
+    }).addTo(map);
+    marker.bindTooltip("Drag to adjust", { permanent: true, direction: "top", offset: [0, -46], className: "drag-tip" });
+    marker.on("drag", () => circle.setLatLng(marker.getLatLng()));
+    marker.on("dragend", () => {
+      const p = marker.getLatLng();
+      placePinRef.current(p.lat, p.lng);
+    });
+    pinRef.current = { marker, circle };
+  }, [value]);
+
   const onSearch = async () => {
     const q = query.trim();
     if (q.length < 3) {
@@ -68,7 +147,7 @@ export default function LocationPicker({
       if (r.length === 0) setSearchError("No matching places found near Barangay Baesa.");
     } catch {
       setResults(null);
-      setSearchError("Search is unavailable right now. You can still tap the map to place the pin.");
+      setSearchError("Address search couldn't connect. Tap the map to place the pin instead.");
     } finally {
       setSearching(false);
     }
@@ -83,15 +162,13 @@ export default function LocationPicker({
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
-        map?.flyTo([latitude, longitude], 18);
+        mapRef.current?.flyTo([latitude, longitude], 18);
         void placePin(latitude, longitude);
       },
-      () => setGeoError("Couldn't get your location. Check your browser's location permission."),
+      () => setGeoError("Couldn't get your location. Check your browser's location permission, or tap the map instead."),
       { enableHighAccuracy: true, timeout: 10000 },
     );
   };
-
-  const center = value ?? MAP_CONFIG.center;
 
   return (
     <div>
@@ -101,60 +178,10 @@ export default function LocationPicker({
           invalid ? "border-status-red ring-2 ring-status-red/20" : "border-line",
         )}
       >
-        <MapContainer
-          ref={setMap}
-          center={[center.lat, center.lng]}
-          zoom={MAP_CONFIG.defaultZoom}
-          className="size-full"
-          scrollWheelZoom={false}
-          zoomControl={false}
-        >
-          <TileLayer url={MAP_CONFIG.tileUrl} attribution={MAP_CONFIG.tileAttribution} />
-          <ZoomControl position="topright" />
-          <ClickToPlace onPick={(lat, lng) => void placePin(lat, lng)} />
-          {otherReports.map((r) => (
-            <CircleMarker
-              key={r.id}
-              center={[r.location.lat, r.location.lng]}
-              radius={5}
-              pathOptions={{ color: "#fff", weight: 1.5, fillColor: categoryColor(r.category), fillOpacity: 0.9 }}
-            >
-              <Tooltip>
-                {r.category}: {r.title}
-              </Tooltip>
-            </CircleMarker>
-          ))}
-          {value && (
-            <>
-              <Circle
-                center={[value.lat, value.lng]}
-                radius={MAP_CONFIG.nearbyRadiusMeters}
-                pathOptions={{ color: "#418054", weight: 1.5, dashArray: "6 6", fillColor: "#418054", fillOpacity: 0.08 }}
-              />
-              <Marker
-                position={[value.lat, value.lng]}
-                icon={icon}
-                draggable
-                keyboard
-                title="Report location. Drag to adjust."
-                eventHandlers={{
-                  dragend: (e) => {
-                    const ll = e.target.getLatLng();
-                    void placePin(ll.lat, ll.lng);
-                  },
-                }}
-              >
-                <Tooltip permanent direction="top" offset={[0, -46]} className="!rounded-full !border-0 !bg-sidebar !px-3 !py-1 !text-xs !font-semibold !text-white !shadow">
-                  Drag to adjust
-                </Tooltip>
-              </Marker>
-            </>
-          )}
-        </MapContainer>
+        <div ref={containerRef} className="size-full" />
 
-        {/* Search overlay (outside MapContainer so typing/clicking doesn't move the map) */}
+        {/* Search overlay. Not a <form>: this component sits inside the report form, and forms can't nest. */}
         <div className="absolute top-3 right-14 left-3 z-[500] sm:right-auto sm:w-80">
-          {/* Not a <form>: this component sits inside the report form, and forms can't nest. */}
           <div role="search" className="flex items-center gap-2 rounded-full bg-white pr-1.5 pl-4 shadow-lg">
             <Search className="size-4 shrink-0 text-muted" aria-hidden />
             <label htmlFor="map-search" className="sr-only">
@@ -199,7 +226,7 @@ export default function LocationPicker({
                         onClick={() => {
                           setResults(null);
                           setQuery(r.label);
-                          map?.flyTo([r.lat, r.lng], 18);
+                          mapRef.current?.flyTo([r.lat, r.lng], 18);
                           void placePin(r.lat, r.lng, r.label);
                         }}
                         className="flex w-full items-start gap-2 px-4 py-2.5 text-left text-sm hover:bg-brand-50"
@@ -216,9 +243,20 @@ export default function LocationPicker({
         </div>
 
         {!value && (
-          <div className="pointer-events-none absolute inset-x-3 bottom-8 z-[500] mx-auto w-fit rounded-full bg-sidebar/90 px-4 py-2 text-center text-xs font-semibold text-white shadow">
+          <div
+            className={cn(
+              "pointer-events-none absolute inset-x-3 z-[500] mx-auto w-fit rounded-full bg-sidebar/90 px-4 py-2 text-center text-xs font-semibold text-white shadow",
+              tilesFailed ? "bottom-20" : "bottom-8",
+            )}
+          >
             Tap the map to drop a pin
           </div>
+        )}
+
+        {tilesFailed && (
+          <MapImageryNotice className="bottom-6 left-3 right-3 sm:right-auto">
+            Map imagery can&apos;t load here. Tapping still places the pin and records its coordinates.
+          </MapImageryNotice>
         )}
       </div>
 

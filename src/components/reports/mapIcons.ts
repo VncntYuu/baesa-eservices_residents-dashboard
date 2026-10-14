@@ -1,4 +1,5 @@
 import L from "leaflet";
+import { MAP_CONFIG } from "@/lib/config/reports";
 
 /** Teardrop map pin as an inline-SVG Leaflet divIcon (no external image assets). */
 export function pinIcon(color: string, opts: { size?: number; ring?: boolean; className?: string } = {}) {
@@ -21,4 +22,27 @@ export function pinIcon(color: string, opts: { size?: number; ring?: boolean; cl
     iconAnchor: [size / 2, h - 2],
     popupAnchor: [0, -h + 6],
   });
+}
+
+export function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+}
+
+/**
+ * Creates a Leaflet map with the portal's defaults. `onTilesFailed` fires when
+ * map imagery can't be loaded (offline, or blocked by the hosting page's
+ * security policy) so the UI can say so instead of showing a silent blank map.
+ */
+export function createBaseMap(el: HTMLElement, onTilesFailed: () => void): L.Map {
+  const { center, defaultZoom, tileUrl, tileAttribution } = MAP_CONFIG;
+  const map = L.map(el, { center: [center.lat, center.lng], zoom: defaultZoom, scrollWheelZoom: false, zoomControl: false });
+  L.control.zoom({ position: "topright" }).addTo(map);
+  let failures = 0;
+  L.tileLayer(tileUrl, { attribution: tileAttribution, maxZoom: 19 })
+    .on("tileerror", () => {
+      failures += 1;
+      if (failures === 2) onTilesFailed();
+    })
+    .addTo(map);
+  return map;
 }

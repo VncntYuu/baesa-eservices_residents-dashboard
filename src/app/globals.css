@@ -54,6 +54,25 @@ dialog::backdrop {
 .leaflet-container {
   font-family: inherit;
   z-index: 0;
+  /* Faint survey grid behind the tiles, so the map still reads as a map if imagery can't load. */
+  background-color: #e7eee9;
+  background-image:
+    linear-gradient(#d5e1d8 1px, transparent 1px),
+    linear-gradient(90deg, #d5e1d8 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.leaflet-tooltip.drag-tip {
+  border: 0;
+  border-radius: 9999px;
+  background: var(--color-sidebar);
+  color: #fff;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
+}
+.leaflet-tooltip.drag-tip::before {
+  display: none;
 }
 .leaflet-div-icon.report-pin,
 .leaflet-div-icon.picker-pin {

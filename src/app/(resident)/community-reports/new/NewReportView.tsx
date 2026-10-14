@@ -1,7 +1,7 @@
 "use client";
 
 import { Camera, CircleCheck, TriangleAlert, X } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useResidentData } from "@/components/layout/ResidentShell";
 import { LocationPicker } from "@/components/reports/maps";
 import { CategoryTag } from "@/components/reports/ReportDetails";
@@ -30,6 +30,7 @@ export function NewReportView() {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [submitted, setSubmitted] = useState<CommunityReport | null>(null);
   const [now] = useState(() => Date.now());
+  const activeReports = useMemo(() => reports.filter((r) => r.status !== "Resolved"), [reports]);
 
   // Free the photo preview URL when it changes / on unmount.
   useEffect(() => () => void (photoUrl && URL.revokeObjectURL(photoUrl)), [photoUrl]);
@@ -288,7 +289,7 @@ export function NewReportView() {
                 setLocation(loc);
                 clearError("location");
               }}
-              otherReports={reports.filter((r) => r.status !== "Resolved")}
+              otherReports={activeReports}
               invalid={!!errors.location}
             />
             {errors.location && (

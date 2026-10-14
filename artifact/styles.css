@@ -1,0 +1,27 @@
+/* Same design tokens and utilities as the Next.js app. */
+@import "../src/app/globals.css";
+@source "../src";
+@source "./";
+
+:root {
+  /* next/font sets this in the app; here the face comes from Google Fonts. */
+  --font-jakarta: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-page);
+  color: var(--color-ink);
+  font-family: var(--font-jakarta);
+  font-size: 16px;
+}
+
+/* Keep the sticky header and fixed sidebar clear of phone system bars. */
+header.sticky {
+  top: env(safe-area-inset-top, 0px);
+}
+aside.fixed > div,
+[aria-label="Navigation menu"] > div:last-child {
+  padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+}

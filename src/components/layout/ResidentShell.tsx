@@ -78,6 +78,11 @@ function ShellInner({ children }: { children: ReactNode }) {
     <PortalDataContext.Provider value={data}>
       <a
         href="#main"
+        onClick={(e) => {
+          // Move focus without touching the URL hash (the portal's routing may use it).
+          e.preventDefault();
+          document.getElementById("main")?.focus();
+        }}
         className="sr-only z-[70] rounded-lg bg-white px-4 py-2 font-semibold text-brand-700 focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
       >
         Skip to content
@@ -91,7 +96,10 @@ function ShellInner({ children }: { children: ReactNode }) {
       {/* Mobile / tablet drawer */}
       <div
         className={cn("fixed inset-0 z-50 lg:hidden", drawerOpen ? "visible" : "invisible")}
-        inert={!drawerOpen}
+        // Set via the DOM property so it behaves the same on every React version.
+        ref={(el) => {
+          if (el) el.inert = !drawerOpen;
+        }}
         aria-hidden={!drawerOpen}
       >
         <div
@@ -127,7 +135,7 @@ function ShellInner({ children }: { children: ReactNode }) {
           onOpenMenu={() => setDrawerOpen(true)}
           onResetDemo={() => setConfirmReset(true)}
         />
-        <main id="main" className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-12 lg:py-10">
+        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-12 lg:py-10">
           {children}
         </main>
       </div>
