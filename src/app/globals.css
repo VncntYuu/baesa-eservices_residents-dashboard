@@ -1,39 +1,50 @@
 @import "tailwindcss";
 
-/* Design tokens taken from the Barangay Baesa E-Services mockups. */
+/*
+ * Design tokens sampled from the "UI/UX for Barangay Baesa" reference screenshots.
+ * Sidebar #1f3a2f with emerald active item, primary green #228250, headings #16493a,
+ * body text #4b5f55, page #f1f6f3, and Tailwind-style status pairs (700 text on 100 fill).
+ */
 @theme {
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
 
-  --color-sidebar: #253930;
-  --color-sidebar-text: #cfe6d9;
-  --color-sidebar-active: #55b685;
+  --color-sidebar: #1f3a2f;
+  --color-sidebar-text: #a7f3d0;
+  --color-sidebar-active: #12b981;
+  --color-sidebar-logout: #22d17a;
 
-  --color-brand-50: #eef6f0;
-  --color-brand-100: #e2f1e6;
-  --color-brand-200: #c5e2cd;
-  --color-brand-400: #55b685;
-  --color-brand-500: #418054;
-  --color-brand-600: #366c47;
-  --color-brand-700: #2b5639;
-  --color-brand-900: #1d3a2b;
+  --color-brand-50: #f1f6f3;
+  --color-brand-100: #e6f4eb;
+  --color-brand-200: #c9e6d3;
+  --color-brand-400: #12b981;
+  --color-brand-500: #228250;
+  --color-brand-600: #1b6b42;
+  --color-brand-700: #165736;
+  --color-brand-900: #16493a;
 
-  --color-page: #f0f4f1;
-  --color-ink: #1d2a24;
-  --color-muted: #68756e;
-  --color-line: #e3e9e5;
+  --color-page: #f1f6f3;
+  --color-ink: #0f2a20;
+  --color-muted: #4b5f55;
+  --color-subtle: #899d94;
+  --color-line: #e2e9e5;
+  --color-table-head: #f8fbf9;
 
-  --color-status-red: #aa2e26;
-  --color-status-red-bg: #fbe5e3;
-  --color-status-amber: #a85923;
-  --color-status-amber-bg: #fcf1d2;
-  --color-status-green: #3c7e44;
-  --color-status-green-bg: #e2f5e7;
-  --color-status-gray: #5f6b65;
-  --color-status-gray-bg: #eceeed;
-  --color-status-blue: #2c5f9e;
-  --color-status-blue-bg: #e3effc;
+  --color-status-red: #b91c1b;
+  --color-status-red-bg: #fde2e1;
+  --color-status-amber: #b4530a;
+  --color-status-amber-bg: #fef3c7;
+  --color-status-green: #17803d;
+  --color-status-green-bg: #dcfce6;
+  --color-status-gray: #5b6b63;
+  --color-status-gray-bg: #e9eeeb;
+  --color-status-blue: #0569a1;
+  --color-status-blue-bg: #dff1fe;
+  --color-info-bg: #eaf4fb;
+  --color-warn-bg: #fff8e1;
+  --color-warn-border: #f3dc9b;
+  --color-warn-ink: #7a5201;
 
-  --shadow-card: 0 1px 2px rgb(29 58 43 / 0.04), 0 4px 16px rgb(29 58 43 / 0.05);
+  --shadow-card: 0 1px 2px rgb(22 73 58 / 0.04), 0 4px 16px rgb(22 73 58 / 0.04);
 }
 
 html {
@@ -51,7 +62,7 @@ dialog::backdrop {
 }
 
 /* Leaflet tweaks so the map sits nicely inside rounded cards */
-.leaflet-container {
+.leaflet-container.leaflet-container {
   font-family: inherit;
   z-index: 0;
   /* Faint survey grid behind the tiles, so the map still reads as a map if imagery can't load. */

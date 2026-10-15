@@ -35,7 +35,7 @@ export function NotificationBell({ notifications }: { notifications: AppNotifica
         aria-expanded={open}
         aria-haspopup="true"
         aria-label={`Notifications, ${unread} unread`}
-        className="relative grid size-11 place-items-center rounded-full bg-brand-50 text-brand-500 transition-colors hover:bg-brand-100 focus-visible:outline-2 focus-visible:outline-brand-500 sm:size-12"
+        className="relative grid size-11 place-items-center rounded-full bg-brand-100 text-brand-500 transition-colors hover:bg-brand-200 focus-visible:outline-2 focus-visible:outline-brand-500 sm:size-12"
       >
         <Bell className="size-5" aria-hidden />
         {unread > 0 && (

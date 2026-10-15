@@ -1,49 +1,46 @@
 import { Info, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Pill, StatusBadge, statusTone, toneClasses } from "@/components/ui/StatusBadge";
+import { Pill, REQUEST_TONE, RequestStatusBadge, toneClasses } from "@/components/ui/StatusBadge";
 import type { DocumentRequest } from "@/lib/types";
 import { cn, formatDate } from "@/lib/utils";
 
-export function RequestCard({ request, onView }: { request: DocumentRequest; onView: () => void }) {
-  const r = request;
-  const completedLabel = r.status === "Completed" ? "Date completed" : r.status === "Rejected" ? "Date closed" : "Date completed";
-  const closedOn = r.completedAt ?? (r.status === "Rejected" ? r.history.at(-1)?.date : undefined);
-
+/** Request card from the My Requests reference; used for small screens (desktop uses the table). */
+export function RequestCard({ request: r, onView }: { request: DocumentRequest; onView: () => void }) {
   return (
     <Card className="p-5 sm:p-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-lg font-bold text-ink sm:text-xl">{r.serviceName}</h3>
-            {r.attachments.length > 0 && (
+            {r.validId && (
               <Pill tone="blue" className="gap-1">
                 <Paperclip className="size-3.5" aria-hidden />
                 Attached
               </Pill>
             )}
           </div>
-          <p className="mt-1 text-sm break-all text-muted">Reference #: {r.referenceNo}</p>
+          <p className="mt-1 text-sm break-all text-subtle">Reference #: {r.referenceNo}</p>
         </div>
-        <StatusBadge status={r.status} className="w-fit" />
+        <RequestStatusBadge status={r.status} className="shrink-0" />
       </div>
 
-      <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 rounded-xl bg-page p-4 sm:p-5 md:grid-cols-4">
+      <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 rounded-xl bg-page p-4 sm:grid-cols-4 sm:p-5">
         <div>
-          <dt className="text-xs font-semibold tracking-wide text-muted uppercase">Date submitted</dt>
+          <dt className="text-xs font-semibold tracking-wide text-subtle uppercase">Date submitted</dt>
           <dd className="mt-1 font-semibold text-ink">{formatDate(r.submittedAt)}</dd>
         </div>
         <div>
-          <dt className="text-xs font-semibold tracking-wide text-muted uppercase">Document fee</dt>
-          <dd className="mt-1 font-semibold text-ink">{r.feeLabel}</dd>
+          <dt className="text-xs font-semibold tracking-wide text-subtle uppercase">Document fee</dt>
+          <dd className="mt-1 font-semibold text-ink">{r.fee.label}</dd>
         </div>
         <div>
-          <dt className="text-xs font-semibold tracking-wide text-muted uppercase">{completedLabel}</dt>
-          <dd className="mt-1 font-semibold text-ink">{closedOn ? formatDate(closedOn) : "Pending"}</dd>
+          <dt className="text-xs font-semibold tracking-wide text-subtle uppercase">Date approved</dt>
+          <dd className="mt-1 font-semibold text-ink">{r.approvedAt ? formatDate(r.approvedAt) : "—"}</dd>
         </div>
         <div>
-          <dt className="text-xs font-semibold tracking-wide text-muted uppercase">Status</dt>
-          <dd className={cn("mt-1 font-semibold", toneClasses[statusTone(r.status)].text)}>{r.status}</dd>
+          <dt className="text-xs font-semibold tracking-wide text-subtle uppercase">Status</dt>
+          <dd className={cn("mt-1 font-semibold", toneClasses[REQUEST_TONE[r.status]].text)}>{r.status}</dd>
         </div>
       </dl>
 

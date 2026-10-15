@@ -1,12 +1,12 @@
 "use client";
 
-import { Megaphone, TriangleAlert } from "lucide-react";
-import { CATEGORY_TONE } from "@/components/announcements/AnnouncementCard";
+import { Megaphone } from "lucide-react";
+import { AnnouncementImage, announcementPillLabel } from "@/components/announcements/AnnouncementCard";
 import { useResidentData } from "@/components/layout/ResidentShell";
 import { LinkButton } from "@/components/ui/Button";
 import { Card, EmptyState } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Pill } from "@/components/ui/StatusBadge";
+import { ANNOUNCEMENT_TONE, Pill } from "@/components/ui/StatusBadge";
 import { formatDate } from "@/lib/utils";
 
 export function AnnouncementDetailView({ id }: { id: string }) {
@@ -28,26 +28,23 @@ export function AnnouncementDetailView({ id }: { id: string }) {
   }
 
   return (
-    <article className="mx-auto max-w-3xl">
+    <article className="mx-auto max-w-4xl">
       <PageHeader title={a.title} back={{ href: "/announcements", label: "Back to Announcements" }} />
-      <Card className="p-6 sm:p-10">
-        <div className="flex flex-wrap items-center gap-3">
-          <Pill tone={CATEGORY_TONE[a.category]}>{a.category}</Pill>
-          {a.important && (
-            <Pill tone="red" className="gap-1">
-              <TriangleAlert className="size-3.5" aria-hidden />
-              Important
-            </Pill>
-          )}
-          <time dateTime={a.publishedAt} className="text-sm text-muted">
-            Posted {formatDate(a.publishedAt)}
-          </time>
-        </div>
-        <p className="mt-6 text-lg font-medium text-ink">{a.summary}</p>
-        <div className="mt-4 space-y-4 text-base leading-relaxed text-ink/85">
-          {a.body.split("\n\n").map((p, i) => (
-            <p key={i}>{p}</p>
-          ))}
+      <Card className="overflow-hidden">
+        <AnnouncementImage announcement={a} className="h-56 sm:h-72" />
+        <div className="p-6 sm:p-10">
+          <div className="flex flex-wrap items-center gap-3">
+            <Pill tone={a.priority === "urgent" ? "red" : ANNOUNCEMENT_TONE[a.category]}>{announcementPillLabel(a)}</Pill>
+            <time dateTime={a.publishedAt} className="text-sm text-subtle">
+              Posted {formatDate(a.publishedAt)}
+            </time>
+          </div>
+          <p className="mt-6 text-lg font-medium text-ink">{a.summary}</p>
+          <div className="mt-4 max-w-prose space-y-4 text-base leading-relaxed text-muted">
+            {a.body.split("\n\n").map((p, i) => (
+              <p key={i}>{p}</p>
+            ))}
+          </div>
         </div>
       </Card>
     </article>

@@ -285,7 +285,7 @@ export default function LocationPicker({
           className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-line bg-white px-4 text-sm font-semibold text-ink hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-brand-500"
         >
           <LocateFixed className="size-4" aria-hidden />
-          Use my location
+          Current location
         </button>
       </div>
       {geoError && <p className="mt-2 text-xs text-status-red">{geoError}</p>}

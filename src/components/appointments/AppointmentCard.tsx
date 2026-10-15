@@ -3,10 +3,11 @@
 import { Clock } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { AppointmentStatusBadge } from "@/components/ui/StatusBadge";
+import { APPOINTMENT_RULES } from "@/lib/config/appointments";
 import { canChangeAppointment } from "@/lib/store/portal-store";
 import type { Appointment } from "@/lib/types";
-import { formatTime } from "@/lib/utils";
+import { formatSlot } from "@/lib/utils";
 
 export function AppointmentCard({
   appointment,
@@ -26,7 +27,7 @@ export function AppointmentCard({
   const showActions = a.status === "Pending" || a.status === "Confirmed";
 
   return (
-    <Card className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-6 sm:p-6">
+    <Card className="flex flex-col gap-4 p-5 shadow-none sm:flex-row sm:items-center sm:gap-6 sm:p-6">
       <div className="flex items-center gap-4 sm:contents">
         <div className="grid w-20 shrink-0 place-items-center rounded-xl bg-brand-100 py-3 text-brand-600" aria-hidden>
           <span className="text-xs font-bold uppercase">{date.toLocaleDateString("en-US", { month: "short" })}</span>
@@ -36,14 +37,14 @@ export function AppointmentCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-lg font-bold text-ink">{a.purpose}</h3>
-            <StatusBadge status={a.status} />
+            <AppointmentStatusBadge status={a.status} />
           </div>
           <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
             <Clock className="size-4" aria-hidden />
             <span className="sr-only">
               {date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })} at{" "}
             </span>
-            {formatTime(a.time)} · Ref {a.referenceNo}
+            {formatSlot(a.time, APPOINTMENT_RULES.slotMinutes)} · Ref {a.referenceNo}
           </p>
           {showActions && !change.allowed && <p className="mt-1 text-xs text-status-amber">{change.reason}</p>}
         </div>

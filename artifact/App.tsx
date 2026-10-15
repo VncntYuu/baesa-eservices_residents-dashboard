@@ -10,8 +10,7 @@ import { AnnouncementsView } from "@/app/(resident)/announcements/AnnouncementsV
 import { CommunityReportsView } from "@/app/(resident)/community-reports/CommunityReportsView";
 import { NewReportView } from "@/app/(resident)/community-reports/new/NewReportView";
 import { DashboardView } from "@/app/(resident)/dashboard/DashboardView";
-import { RequestFormView } from "@/app/(resident)/document-request/[serviceId]/RequestFormView";
-import DocumentRequestPage from "@/app/(resident)/document-request/page";
+import { DocumentRequestView } from "@/app/(resident)/document-request/DocumentRequestView";
 import { MyRequestsView } from "@/app/(resident)/my-requests/MyRequestsView";
 import { NotificationsView } from "@/app/(resident)/notifications/NotificationsView";
 import { LoginView } from "@/app/login/LoginView";
@@ -43,6 +42,11 @@ function NotFound() {
   );
 }
 
+function Redirect({ to }: { to: string }) {
+  useEffect(() => navigate(to, { replace: true }), [to]);
+  return null;
+}
+
 function residentPage(pathname: string) {
   const [section, sub, ...extra] = pathname.split("/").filter(Boolean);
   if (extra.length) return <NotFound />;
@@ -50,8 +54,9 @@ function residentPage(pathname: string) {
     case "dashboard":
       return sub ? <NotFound /> : <DashboardView />;
     case "document-request":
-      if (!sub) return <DocumentRequestPage />;
-      return getService(sub) ? <RequestFormView serviceId={getService(sub)!.id} /> : <NotFound />;
+      // Old /document-request/<service> links open the form modal on the Services page.
+      if (sub && getService(sub)) return <Redirect to={`/document-request?service=${sub}`} />;
+      return sub ? <NotFound /> : <DocumentRequestView />;
     case "my-requests":
       return sub ? <NotFound /> : <MyRequestsView />;
     case "community-reports":

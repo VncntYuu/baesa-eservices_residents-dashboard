@@ -1,12 +1,16 @@
-import { Search } from "lucide-react";
+import { ChevronDown, Search } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 const controlBase =
-  "w-full rounded-xl border bg-white px-4 text-base text-ink placeholder:text-[#9aa49f] transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400/40 disabled:bg-page sm:text-[15px]";
+  "w-full rounded-xl border px-4 text-base text-ink placeholder:text-[#a3b0aa] transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400/30 disabled:bg-page disabled:text-subtle sm:text-[15px]";
 
-function controlState(invalid?: boolean) {
-  return invalid ? "border-status-red focus:border-status-red" : "border-line focus:border-brand-400";
+/** "outline" = white bordered field (forms); "filled" = soft green-gray field (appointment reference). */
+export type ControlVariant = "outline" | "filled";
+
+function controlState(invalid?: boolean, variant: ControlVariant = "outline") {
+  const bg = variant === "filled" ? "bg-page" : "bg-white";
+  return cn(bg, invalid ? "border-status-red focus:border-status-red" : "border-[#dce4df] focus:border-brand-400");
 }
 
 /** Label + required marker + help/error text, wired up with aria attributes. */
@@ -40,7 +44,7 @@ export function Field({
       </label>
       {children}
       {help && !error && (
-        <p id={`${id}-help`} className="text-xs text-muted">
+        <p id={`${id}-help`} className="text-xs text-subtle">
           {help}
         </p>
       )}
@@ -59,37 +63,73 @@ export function describedBy(id: string, error?: string, help?: ReactNode) {
   return undefined;
 }
 
-export function TextInput({ invalid, className, ...props }: ComponentProps<"input"> & { invalid?: boolean }) {
-  return <input aria-invalid={invalid || undefined} className={cn(controlBase, "h-12", controlState(invalid), className)} {...props} />;
-}
+type VariantProps = { invalid?: boolean; variant?: ControlVariant };
 
-export function TextArea({ invalid, className, ...props }: ComponentProps<"textarea"> & { invalid?: boolean }) {
+export function TextInput({ invalid, variant, className, ...props }: ComponentProps<"input"> & VariantProps) {
+  const emptyDate = props.type === "date" && !props.value;
   return (
-    <textarea
+    <input
       aria-invalid={invalid || undefined}
-      className={cn(controlBase, "min-h-28 py-3 leading-relaxed", controlState(invalid), className)}
+      className={cn(controlBase, "h-12", controlState(invalid, variant), emptyDate && "text-[#a3b0aa]", className)}
       {...props}
     />
   );
 }
 
-export function Select({ invalid, className, children, ...props }: ComponentProps<"select"> & { invalid?: boolean }) {
+export function TextArea({ invalid, variant, className, ...props }: ComponentProps<"textarea"> & VariantProps) {
   return (
-    <select aria-invalid={invalid || undefined} className={cn(controlBase, "h-12 pr-10", controlState(invalid), className)} {...props}>
-      {children}
-    </select>
+    <textarea
+      aria-invalid={invalid || undefined}
+      className={cn(controlBase, "min-h-28 py-3 leading-relaxed", controlState(invalid, variant), className)}
+      {...props}
+    />
+  );
+}
+
+/** Native select (keyboard and screen-reader friendly) with the reference's chevron. */
+export function Select({
+  invalid,
+  variant,
+  className,
+  wrapperClassName,
+  children,
+  ...props
+}: ComponentProps<"select"> & VariantProps & { wrapperClassName?: string }) {
+  return (
+    <div className={cn("relative", wrapperClassName)}>
+      <select
+        aria-invalid={invalid || undefined}
+        className={cn(controlBase, "h-12 appearance-none pr-11", controlState(invalid, variant), props.value === "" && "text-[#a3b0aa]", className)}
+        {...props}
+      >
+        {children}
+      </select>
+      <ChevronDown aria-hidden className="pointer-events-none absolute top-1/2 right-4 size-5 -translate-y-1/2 text-ink" />
+    </div>
+  );
+}
+
+/** Input with a trailing icon (calendar, person) as in the appointment reference. */
+export function IconInput({
+  icon,
+  wrapperClassName,
+  ...props
+}: ComponentProps<typeof TextInput> & { icon: ReactNode; wrapperClassName?: string }) {
+  return (
+    <div className={cn("relative", wrapperClassName)}>
+      <TextInput {...props} className={cn("pr-12", props.className)} />
+      <span aria-hidden className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-muted [&_svg]:size-5">
+        {icon}
+      </span>
+    </div>
   );
 }
 
 export function SearchInput({ className, ...props }: ComponentProps<"input">) {
   return (
     <div className={cn("relative", className)}>
-      <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted" />
-      <input
-        type="search"
-        className={cn(controlBase, "h-11 border-line pl-10 focus:border-brand-400")}
-        {...props}
-      />
+      <Search aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted" />
+      <input type="search" className={cn(controlBase, controlState(), "h-12 pl-12")} {...props} />
     </div>
   );
 }

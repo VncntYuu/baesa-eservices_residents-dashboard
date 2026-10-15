@@ -1,18 +1,16 @@
-import type { ServiceGroup, ServiceId } from "@/lib/types";
+import type { PaymentMethod, ServiceGroup, ServiceId } from "@/lib/types";
 
 /**
- * Document & assistance service catalogue.
+ * Service catalogue for Document Request.
  *
  * ⚠️ CONFIGURATION, NOT OFFICIAL RULES
- * - `feeLabel` values are copied from the design mockups and are NOT confirmed
- *   by the barangay. Keep `feeConfirmed: false` until they are.
- * - `requirements` is intentionally empty: official documentary requirements
- *   have not been provided. Add them here once confirmed and the request form
- *   will list them automatically.
- * - `processingNote` is null until official processing rules are provided.
+ * - Fee amounts are the SAMPLE values shown in the design references. They are
+ *   flagged `isSample: true` and labelled in the UI until the barangay confirms them.
+ * - `requiredDocuments` lists come from the design references. Services without a
+ *   reference (burial/donation) are left empty and the UI says so.
  */
 
-export type FieldType = "text" | "textarea" | "number" | "date" | "select" | "checkbox";
+export type FieldType = "text" | "textarea" | "number" | "date" | "select";
 
 export interface ServiceField {
   id: string;
@@ -22,33 +20,74 @@ export interface ServiceField {
   placeholder?: string;
   helpText?: string;
   options?: string[];
+  /** For selects: the option that reveals a free-text "please specify" field. */
+  otherOption?: string;
+  otherLabel?: string;
   min?: number;
+  max?: number;
+  /** Shown before the input, e.g. "₱". */
+  prefix?: string;
+  /** Spans the full width of the two-column grid. */
+  wide?: boolean;
 }
 
-export interface ServiceIconKey {
-  icon: "file" | "heart" | "home" | "briefcase" | "flower" | "hand-heart";
+export interface ServiceFee {
+  /** null = amount is assessed by the barangay ("Variable"). */
+  amount: number | null;
+  label: string;
+  isSample: boolean;
+  note?: string;
 }
 
-export interface ServiceConfig extends ServiceIconKey {
+export interface ServiceConfig {
   id: ServiceId;
   group: ServiceGroup;
+  icon: "file" | "heart" | "home" | "briefcase" | "flower" | "hand-heart";
   name: string;
+  formTitle: string;
   shortDescription: string;
-  feeLabel: string;
-  feeConfirmed: boolean;
-  requirements: string[];
-  processingNote: string | null;
+  fee: ServiceFee;
+  requiredDocuments: string[];
+  detailsTitle: string;
   fields: ServiceField[];
+  /** Whether the form shows payment options. */
+  takesPayment: boolean;
 }
 
-const purposeField: ServiceField = {
-  id: "purpose",
-  label: "Purpose of request",
-  type: "text",
-  required: true,
-  placeholder: "e.g. Employment requirement",
-  helpText: "Tell us what the document will be used for.",
-};
+const VALID_ID = "Valid government-issued ID (Passport, Driver's License, National ID)";
+
+export const CLEARANCE_PURPOSES = [
+  "Employment",
+  "Government IDs",
+  "Proof of Address / Residency",
+  "Business Operations",
+  "Banking & Loans",
+  "School & Scholarships",
+  "Utility Connections",
+  "Others",
+];
+
+export const RESIDENCY_DURATIONS = [
+  "Less than 6 months",
+  "6 months to less than 1 year",
+  "1 to less than 3 years",
+  "3 to less than 5 years",
+  "5 to less than 10 years",
+  "10 years or more",
+  "Other (specify)",
+];
+
+export const EDUCATION_LEVELS = [
+  "Elementary graduate",
+  "Junior High School graduate",
+  "Senior High School graduate",
+  "Technical-Vocational (TVET) graduate",
+  "College undergraduate",
+  "College graduate",
+  "Post-graduate",
+];
+
+const FAMILY_SIZES = Array.from({ length: 20 }, (_, i) => String(i + 1)).concat("More than 20");
 
 export const SERVICES: ServiceConfig[] = [
   {
@@ -56,30 +95,60 @@ export const SERVICES: ServiceConfig[] = [
     group: "certificate",
     icon: "file",
     name: "Barangay Clearance",
+    formTitle: "Barangay Clearance Request",
     shortDescription: "Official proof of residency and good standing",
-    feeLabel: "₱100",
-    feeConfirmed: false,
-    requirements: [],
-    processingNote: null,
-    fields: [purposeField],
+    fee: { amount: 100, label: "₱100", isSample: true },
+    requiredDocuments: [VALID_ID, "Proof of residency (e.g., utility bill, lease agreement)"],
+    detailsTitle: "Request Details",
+    takesPayment: true,
+    fields: [
+      {
+        id: "purpose",
+        label: "Purpose of Request",
+        type: "select",
+        required: true,
+        options: CLEARANCE_PURPOSES,
+        placeholder: "-- Select a purpose --",
+        otherOption: "Others",
+        otherLabel: "Please specify the purpose",
+        wide: true,
+      },
+    ],
   },
   {
     id: "barangay-indigency",
     group: "certificate",
     icon: "heart",
     name: "Barangay Indigency",
+    formTitle: "Barangay Indigency Request",
     shortDescription: "For educational assistance and benefits",
-    feeLabel: "₱50",
-    feeConfirmed: false,
-    requirements: [],
-    processingNote: null,
+    fee: { amount: 50, label: "₱50", isSample: true },
+    requiredDocuments: [
+      VALID_ID,
+      "Official household list/Census list",
+      "Proof of income or lack thereof (such as employment certificate)",
+    ],
+    detailsTitle: "Financial Information",
+    takesPayment: true,
     fields: [
-      purposeField,
       {
-        id: "beneficiary",
-        label: "Beneficiary name (if not yourself)",
-        type: "text",
-        placeholder: "Leave blank if the certificate is for you",
+        id: "familyMembers",
+        label: "Number of Family Members",
+        type: "select",
+        required: true,
+        options: FAMILY_SIZES,
+        placeholder: "-- Select --",
+      },
+      {
+        id: "monthlyIncome",
+        label: "Monthly Income (₱)",
+        type: "number",
+        required: true,
+        min: 0,
+        max: 10_000_000,
+        prefix: "₱",
+        placeholder: "e.g. 8000",
+        helpText: "Total monthly household income. Enter 0 if none.",
       },
     ],
   },
@@ -88,20 +157,27 @@ export const SERVICES: ServiceConfig[] = [
     group: "certificate",
     icon: "home",
     name: "Barangay Residency",
+    formTitle: "Barangay Residency Request",
     shortDescription: "Proof of residency in the barangay",
-    feeLabel: "₱75",
-    feeConfirmed: false,
-    requirements: [],
-    processingNote: null,
+    fee: { amount: 75, label: "₱75", isSample: true },
+    requiredDocuments: [
+      VALID_ID,
+      "Proof of residence (utility bill, lease agreement, or property document)",
+      "Certificate of household membership",
+    ],
+    detailsTitle: "Resident Details",
+    takesPayment: true,
     fields: [
-      purposeField,
       {
-        id: "yearsOfResidency",
-        label: "Years residing in Barangay Baesa",
-        type: "number",
+        id: "residencyDuration",
+        label: "How long have you been a resident?",
+        type: "select",
         required: true,
-        min: 0,
-        placeholder: "e.g. 5",
+        options: RESIDENCY_DURATIONS,
+        placeholder: "-- Select duration --",
+        otherOption: "Other (specify)",
+        otherLabel: "Specify how long (e.g. 2 years and 4 months)",
+        wide: true,
       },
     ],
   },
@@ -110,18 +186,38 @@ export const SERVICES: ServiceConfig[] = [
     group: "certificate",
     icon: "briefcase",
     name: "First-Time Job Seeker Certificate",
+    formTitle: "First-Time Job Seeker Request",
     shortDescription: "For first-time job applicants",
-    feeLabel: "Free",
-    feeConfirmed: false,
-    requirements: [],
-    processingNote: null,
+    fee: {
+      amount: 0,
+      label: "Free",
+      isSample: false,
+      note: "Fees are waived for first-time jobseekers under RA 11261 (once only). Please confirm with the barangay.",
+    },
+    requiredDocuments: [
+      VALID_ID,
+      "Copy of educational attainment (High School diploma or higher)",
+      "Certificate of graduation or school records",
+    ],
+    detailsTitle: "Educational & Professional Background",
+    takesPayment: true,
     fields: [
-      purposeField,
       {
-        id: "firstTimeConfirmation",
-        label: "I confirm that I am seeking employment for the first time.",
-        type: "checkbox",
+        id: "educationLevel",
+        label: "Highest Education Level",
+        type: "select",
         required: true,
+        options: EDUCATION_LEVELS,
+        placeholder: "-- Select Education Level --",
+        wide: true,
+      },
+      {
+        id: "skills",
+        label: "Skills or Interests",
+        type: "text",
+        required: true,
+        placeholder: "e.g. Customer service, basic computer skills, welding",
+        wide: true,
       },
     ],
   },
@@ -130,24 +226,15 @@ export const SERVICES: ServiceConfig[] = [
     group: "assistance",
     icon: "flower",
     name: "Burial Assistance",
-    shortDescription: "Request assistance for burial of a family member",
-    feeLabel: "Variable",
-    feeConfirmed: false,
-    requirements: [],
-    processingNote: null,
+    formTitle: "Burial Assistance Request",
+    shortDescription: "Request assistance for the burial of a family member",
+    fee: { amount: null, label: "Variable", isSample: false, note: "Assistance amounts are assessed by the barangay." },
+    requiredDocuments: [],
+    detailsTitle: "Assistance Details",
+    takesPayment: false,
     fields: [
-      {
-        id: "deceasedName",
-        label: "Full name of the deceased",
-        type: "text",
-        required: true,
-      },
-      {
-        id: "dateOfDeath",
-        label: "Date of death",
-        type: "date",
-        required: true,
-      },
+      { id: "deceasedName", label: "Full name of the deceased", type: "text", required: true },
+      { id: "dateOfDeath", label: "Date of death", type: "date", required: true },
       {
         id: "relationship",
         label: "Your relationship to the deceased",
@@ -156,11 +243,11 @@ export const SERVICES: ServiceConfig[] = [
         placeholder: "e.g. Son, Daughter, Spouse",
       },
       {
-        id: "purpose",
+        id: "assistanceDetails",
         label: "Details of the assistance needed",
         type: "textarea",
         required: true,
-        placeholder: "Briefly describe the assistance you are requesting.",
+        wide: true,
       },
     ],
   },
@@ -169,11 +256,12 @@ export const SERVICES: ServiceConfig[] = [
     group: "assistance",
     icon: "hand-heart",
     name: "Donation Assistance",
+    formTitle: "Donation Assistance Request",
     shortDescription: "Request donation or support from the barangay",
-    feeLabel: "Variable",
-    feeConfirmed: false,
-    requirements: [],
-    processingNote: null,
+    fee: { amount: null, label: "Variable", isSample: false, note: "Assistance is assessed by the barangay." },
+    requiredDocuments: [],
+    detailsTitle: "Assistance Details",
+    takesPayment: false,
     fields: [
       {
         id: "assistanceType",
@@ -181,14 +269,9 @@ export const SERVICES: ServiceConfig[] = [
         type: "text",
         required: true,
         placeholder: "e.g. Food packs, medical support",
+        wide: true,
       },
-      {
-        id: "purpose",
-        label: "Reason for the request",
-        type: "textarea",
-        required: true,
-        placeholder: "Briefly describe your situation.",
-      },
+      { id: "assistanceDetails", label: "Reason for the request", type: "textarea", required: true, wide: true },
     ],
   },
 ];
@@ -196,16 +279,29 @@ export const SERVICES: ServiceConfig[] = [
 export const CERTIFICATE_SERVICES = SERVICES.filter((s) => s.group === "certificate");
 export const ASSISTANCE_SERVICES = SERVICES.filter((s) => s.group === "assistance");
 
-export function getService(id: string): ServiceConfig | undefined {
+export function getService(id: string | null | undefined): ServiceConfig | undefined {
   return SERVICES.find((s) => s.id === id);
 }
 
-/** Generic instruction shown on requests until official rules are configured. */
-export const DEFAULT_PICKUP_INSTRUCTION =
-  "Please bring a valid ID and this reference number to the barangay hall.";
+/* ------------------------------ Payments ------------------------------ */
 
-export const ATTACHMENT_RULES = {
-  accept: ".jpg,.jpeg,.png,.pdf",
+export const ONLINE_METHODS: { id: Exclude<PaymentMethod, "face-to-face" | "none">; label: string }[] = [
+  { id: "gcash", label: "GCash" },
+  { id: "maya", label: "Maya" },
+  { id: "paypal", label: "PayPal" },
+];
+
+export function paymentMethodLabel(m: PaymentMethod): string {
+  if (m === "face-to-face") return "Face-to-face payment";
+  if (m === "none") return "No payment";
+  return ONLINE_METHODS.find((o) => o.id === m)?.label ?? m;
+}
+
+/** Generic instruction shown on requests until official rules are configured. */
+export const DEFAULT_PICKUP_INSTRUCTION = "Please bring your ID and this reference number to the barangay hall.";
+
+export const VALID_ID_RULES = {
+  accept: "image/jpeg,image/png,application/pdf",
+  extensions: [".jpg", ".jpeg", ".png", ".pdf"],
   maxSizeMb: 5,
-  maxFiles: 3,
 };

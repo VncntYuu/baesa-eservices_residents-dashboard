@@ -1,16 +1,48 @@
-import type { ReportCategory } from "@/lib/types";
+import type { CommunityCategory, ReportKind, ReportStatus } from "@/lib/types";
 
-export const REPORT_CATEGORIES: { value: ReportCategory; label: string; color: string }[] = [
-  { value: "Garbage", label: "Garbage", color: "#E3A72F" },
-  { value: "Drainage", label: "Drainage", color: "#3B6FD8" },
-  { value: "Streetlight", label: "Streetlight", color: "#7A5AD6" },
-  { value: "Road Hazard", label: "Road hazard", color: "#D04545" },
-  { value: "Others", label: "Other", color: "#7C8A83" },
+export interface CategoryOption {
+  value: CommunityCategory;
+  label: string;
+  kind: ReportKind;
+  color: string;
+  isOther?: boolean;
+}
+
+/** Categories and dot colours follow the File a Complaint / File a Report screenshots. */
+export const COMPLAINT_CATEGORIES: CategoryOption[] = [
+  { value: "Garbage Collection", label: "Garbage Collection", kind: "Complaint", color: "#d6a100" },
+  { value: "Noise Complaint", label: "Noise Complaint", kind: "Complaint", color: "#2e6fdc" },
+  { value: "Drainage Problem", label: "Drainage Problem", kind: "Complaint", color: "#7c5cd6" },
+  { value: "Illegal Parking", label: "Illegal Parking", kind: "Complaint", color: "#d64545" },
+  { value: "Other Complaint", label: "Other", kind: "Complaint", color: "#899d94", isOther: true },
 ];
 
-export function categoryColor(category: ReportCategory): string {
-  return REPORT_CATEGORIES.find((c) => c.value === category)?.color ?? "#7C8A83";
+export const REPORT_CATEGORIES: CategoryOption[] = [
+  { value: "Road Hazard", label: "Road Hazard", kind: "Report", color: "#e0662a" },
+  { value: "Broken Streetlight", label: "Broken Streetlight", kind: "Report", color: "#3fbf3a" },
+  { value: "Flooding", label: "Flooding", kind: "Report", color: "#4b2be0" },
+  { value: "Damaged Public Property", label: "Damaged Public Property", kind: "Report", color: "#e57e86" },
+  { value: "Other Report", label: "Other", kind: "Report", color: "#6f8079", isOther: true },
+];
+
+export const ALL_CATEGORIES: CategoryOption[] = [...COMPLAINT_CATEGORIES, ...REPORT_CATEGORIES];
+
+export function categoryOption(category: CommunityCategory): CategoryOption {
+  return ALL_CATEGORIES.find((c) => c.value === category) ?? COMPLAINT_CATEGORIES[4];
 }
+
+export function categoryColor(category: CommunityCategory): string {
+  return categoryOption(category).color;
+}
+
+/** What residents see for a category, including the text they typed for "Other". */
+export function categoryLabel(category: CommunityCategory, other?: string): string {
+  const opt = categoryOption(category);
+  if (opt.isOther) return other ? `Other: ${other}` : "Other";
+  return opt.label;
+}
+
+export const REPORT_STATUSES: ReportStatus[] = ["Pending", "In Progress", "Resolved"];
 
 /**
  * Map settings. Uses OpenStreetMap tiles + Nominatim search, which need no API

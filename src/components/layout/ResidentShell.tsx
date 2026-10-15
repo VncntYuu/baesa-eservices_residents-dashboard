@@ -68,7 +68,6 @@ function ShellInner({ children }: { children: ReactNode }) {
     );
   }
 
-  const unread = data.notifications.filter((n) => !n.read).length;
   const openLogout = () => {
     setDrawerOpen(false);
     setConfirmLogout(true);
@@ -89,8 +88,8 @@ function ShellInner({ children }: { children: ReactNode }) {
       </a>
 
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[17rem] lg:block xl:w-[18rem]">
-        <ResidentSidebar onLogout={openLogout} unreadCount={unread} />
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[17rem] lg:block">
+        <ResidentSidebar onLogout={openLogout} />
       </aside>
 
       {/* Mobile / tablet drawer */}
@@ -124,20 +123,24 @@ function ShellInner({ children }: { children: ReactNode }) {
           >
             <X className="size-5" aria-hidden />
           </button>
-          <ResidentSidebar onNavigate={() => setDrawerOpen(false)} onLogout={openLogout} unreadCount={unread} />
+          <ResidentSidebar onNavigate={() => setDrawerOpen(false)} onLogout={openLogout} />
         </div>
       </div>
 
-      <div className="flex min-h-dvh flex-col lg:pl-[17rem] xl:pl-[18rem]">
+      <div className="flex min-h-dvh flex-col lg:pl-[17rem]">
         <ResidentHeader
           resident={data.resident}
           notifications={data.notifications}
           onOpenMenu={() => setDrawerOpen(true)}
           onResetDemo={() => setConfirmReset(true)}
         />
-        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-12 lg:py-10">
+        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
           {children}
         </main>
+        <footer className="mx-auto w-full max-w-[1400px] px-4 pb-6 text-xs text-subtle sm:px-6 lg:px-10">
+          Demonstration build: requests, reports, appointments and notifications are saved in this browser only and are not
+          sent to Barangay Baesa staff.
+        </footer>
       </div>
 
       <ConfirmDialog

@@ -24,12 +24,12 @@ Use **Reset demo data** in the profile menu (top right) to restore the sample da
 | --- | --- |
 | `/login` | Demo sign-in (no real authentication) |
 | `/dashboard` | Welcome, request summary, quick access, recent announcements |
-| `/document-request` | Service catalogue (certificates + assistance) |
-| `/document-request/[serviceId]` | Request form → review → reference number |
-| `/my-requests` | Request tracking; `?status=` filter and `?ref=` details deep links |
-| `/community-reports` | My Reports / Community Map tabs (`?tab=mine\|map`) |
-| `/community-reports/new` | Report form with map pin, search, photo, review |
-| `/appointments` | Upcoming / previous, request, reschedule, cancel |
+| `/document-request` | Services; each certificate opens its request form in a modal (`?service=<id>`) |
+| `/document-request/[serviceId]` | Old links; redirects to `?service=<id>` |
+| `/my-requests` | Table on desktop, cards on mobile; `?status=` filter and `?ref=` details deep links |
+| `/community-reports` | My Reports table / Community Map tabs (`?tab=mine\|map`) |
+| `/community-reports/new` | Complaint or Report form with category, photo and map pin |
+| `/appointments` | Book an Appointment form + upcoming / previous lists, reschedule, cancel |
 | `/announcements`, `/announcements/[id]` | List with filters, detail view |
 | `/notifications` | Notification centre, read/unread, mark all as read |
 
@@ -58,15 +58,32 @@ src/
     services/geocoding.ts  # Nominatim search / reverse lookup
 ```
 
+## Design references
+
+The UI follows the 17 screenshots in "UI/UX for Barangay Baesa" (Dashboard, Services, the four certificate
+forms, My Requests, My Reports, Community Map, File a Complaint / Report, Book an Appointment, Announcements,
+Notifications). Colours are sampled from them into the tokens in `src/app/globals.css`.
+
+## Payments, camera and other simulated parts
+
+- **Payments**: residents choose GCash, Maya, PayPal or face-to-face. Nothing is charged. Online choices are
+  saved as "Awaiting online payment"; face-to-face as "Pay at barangay hall". The portal never marks a payment
+  as paid. Real payments need a provider integration (e.g. a PH payment gateway) with server-side verification.
+- **Identity verification**: the camera is only requested when the resident taps the capture area; there is
+  always a preview, retake and an upload fallback. Photos and ID files are not stored (only their details).
+- **Report photos** are downscaled and kept in browser storage for the demo.
+
 ## Things the barangay still needs to confirm (kept configurable)
 
 | What | Where | Current state |
 | --- | --- | --- |
-| Document fees | `lib/config/services.ts` → `feeLabel`, `feeConfirmed` | Copied from the design mockups, shown as "to be confirmed" |
-| Documentary requirements | `services.ts` → `requirements` | Empty; UI says requirements aren't configured yet |
-| Processing time / rules | `services.ts` → `processingNote` | `null` |
+| Document fees | `lib/config/services.ts` → `fee` | Sample amounts from the mockups (₱100 / ₱50 / ₱75), labelled as samples |
+| First-Time Job Seeker fee | `services.ts` | Set to Free (RA 11261 waiver); the mockup showed ₱100 |
+| Required documents | `services.ts` → `requiredDocuments` | Lists from the mockups; Burial/Donation left empty |
+| Form options (purposes, durations, education levels) | `services.ts` | Purposes from the requirements; durations and education levels are reasonable defaults |
 | Pickup instruction | `services.ts` → `DEFAULT_PICKUP_INSTRUCTION` | Text from the design mockup |
-| Appointment purposes, slots, days, change window | `lib/config/appointments.ts` | Placeholder values, banner on the page says so |
+| Appointment services, 30-min slots, days, change window | `lib/config/appointments.ts` | Placeholder values, note on the page says so |
+| Complaint / report categories and colours | `lib/config/reports.ts` | From the File a Complaint / Report mockups |
 | Announcements | `lib/mock-data.ts` | Sample content |
 
 ## Map

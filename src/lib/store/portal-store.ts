@@ -15,18 +15,23 @@ import { APPOINTMENT_RULES } from "@/lib/config/appointments";
 import { DEFAULT_PICKUP_INSTRUCTION, getService } from "@/lib/config/services";
 import { createSeedData, type PortalData } from "@/lib/mock-data";
 import type {
+  ApplicantInfo,
   AppNotification,
   Appointment,
+  CommunityCategory,
   CommunityReport,
   DocumentRequest,
   GeoLocation,
-  ReportCategory,
+  PaymentMethod,
+  PaymentStatus,
   ReportKind,
   ServiceId,
+  SubmittedDetail,
+  UploadedFileInfo,
 } from "@/lib/types";
 import { makeReference, uid } from "@/lib/utils";
 
-const STORAGE_KEY = "baesa-portal-demo-v1";
+const STORAGE_KEY = "baesa-portal-demo-v2";
 
 let state: PortalData | null = null;
 const listeners = new Set<() => void>();
@@ -45,7 +50,14 @@ function persist(next: PortalData) {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {
-    /* ignore quota / private-mode errors; data stays in memory */
+    // Browser storage is small: if photos push it over the limit, keep their
+    // file names but drop the image data, then try once more.
+    try {
+      const slim = { ...next, reports: next.reports.map((r) => (r.photo ? { ...r, photo: { name: r.photo.name } } : r)) };
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(slim));
+    } catch {
+      /* private mode or still too large: data stays in memory for this visit */
+    }
   }
 }
 
@@ -81,8 +93,8 @@ function update(mutator: (draft: PortalData) => PortalData) {
   listeners.forEach((l) => l());
 }
 
-function newNotification(n: Omit<AppNotification, "id" | "createdAt" | "read">): AppNotification {
-  return { ...n, id: uid(), createdAt: new Date().toISOString(), read: false };
+function newNotification(n: Omit<AppNotification, "id" | "createdAt" | "read" | "tag"> & { tag?: AppNotification["tag"] }): AppNotification {
+  return { tag: "New", ...n, id: uid(), createdAt: new Date().toISOString(), read: false };
 }
 
 /* ------------------------------- Hooks ------------------------------- */
@@ -96,12 +108,27 @@ export function usePortalData(): PortalData | null {
 
 export interface NewRequestInput {
   serviceId: ServiceId;
-  details: Record<string, string>;
-  attachments: string[];
+  applicant: ApplicantInfo;
+  summary: string;
+  details: SubmittedDetail[];
+  validId: UploadedFileInfo;
+  identityCheck: { method: "camera" | "upload" };
+  /** Ignored when the service has no fee to collect online. */
+  paymentMethod: PaymentMethod;
+}
+
+/** Works out what the resident owes and the honest payment status (no payment is ever marked paid here). */
+export function paymentFor(serviceId: ServiceId, method: PaymentMethod): { method: PaymentMethod; status: PaymentStatus } {
+  const service = getService(serviceId);
+  const amount = service?.fee.amount;
+  if (amount === null || amount === undefined) return { method: "none", status: "To be assessed" };
+  if (amount === 0 || !service?.takesPayment) return { method: "none", status: "Not required" };
+  if (method === "face-to-face") return { method, status: "Pay at barangay hall" };
+  return { method, status: "Awaiting online payment" };
 }
 
 export function submitDocumentRequest(input: NewRequestInput): DocumentRequest {
-  // API: POST /api/resident/requests
+  // API: POST /api/resident/requests (multipart: form fields + valid ID + verification photo)
   const service = getService(input.serviceId);
   if (!service) throw new Error(`Unknown service ${input.serviceId}`);
   const now = new Date();
@@ -110,12 +137,20 @@ export function submitDocumentRequest(input: NewRequestInput): DocumentRequest {
     referenceNo: makeReference("REQ", now),
     serviceId: service.id,
     serviceName: service.name,
-    purpose: input.details.purpose ?? "",
+    applicant: input.applicant,
+    summary: input.summary,
     details: input.details,
-    attachments: input.attachments,
+    validId: input.validId,
+    identityCheck: { method: input.identityCheck.method, capturedAt: now.toISOString() },
+    fee: {
+      lines: service.fee.amount !== null ? [{ label: `${service.name} fee`, amount: service.fee.amount }] : [],
+      total: service.fee.amount,
+      label: service.fee.label,
+      isSample: service.fee.isSample,
+    },
+    payment: paymentFor(service.id, input.paymentMethod),
     submittedAt: now.toISOString(),
     status: "Pending",
-    feeLabel: service.feeLabel,
     remarks: DEFAULT_PICKUP_INSTRUCTION,
     history: [{ status: "Pending", date: now.toISOString(), note: "Request submitted." }],
   };
@@ -126,7 +161,7 @@ export function submitDocumentRequest(input: NewRequestInput): DocumentRequest {
       newNotification({
         type: "request",
         title: "Request submitted",
-        message: `${service.name} request ${request.referenceNo} was received.`,
+        message: `${service.name} request ${request.referenceNo} was received and is pending review.`,
         href: `/my-requests?ref=${request.referenceNo}`,
       }),
       ...d.notifications,
@@ -137,10 +172,11 @@ export function submitDocumentRequest(input: NewRequestInput): DocumentRequest {
 
 export interface NewReportInput {
   kind: ReportKind;
-  category: ReportCategory;
+  category: CommunityCategory;
+  otherCategory?: string;
   title: string;
   description: string;
-  photoName?: string;
+  photo?: { name: string; dataUrl?: string };
   location: GeoLocation;
 }
 
@@ -152,7 +188,7 @@ export function submitCommunityReport(input: NewReportInput): CommunityReport {
     id: uid(),
     referenceNo: makeReference("RPT", now),
     submittedAt: now.toISOString(),
-    status: "Submitted",
+    status: "Pending",
     isMine: true,
     updates: [{ date: now.toISOString(), note: "Report submitted." }],
   };
@@ -162,9 +198,9 @@ export function submitCommunityReport(input: NewReportInput): CommunityReport {
     notifications: [
       newNotification({
         type: "report",
-        title: "Report submitted",
-        message: `Your ${input.category.toLowerCase()} report ${report.referenceNo} was received.`,
-        href: "/community-reports",
+        title: `${input.kind} submitted`,
+        message: `Your ${input.kind.toLowerCase()} "${input.title}" (${report.referenceNo}) was received.`,
+        href: "/community-reports?tab=mine",
       }),
       ...d.notifications,
     ],
@@ -174,6 +210,7 @@ export function submitCommunityReport(input: NewReportInput): CommunityReport {
 
 export interface NewAppointmentInput {
   purpose: string;
+  residentName: string;
   date: string;
   time: string;
   notes?: string;
@@ -196,6 +233,7 @@ export function requestAppointment(input: NewAppointmentInput): Appointment {
     notifications: [
       newNotification({
         type: "appointment",
+        tag: "Updated",
         title: "Appointment requested",
         message: `Your appointment request ${appt.referenceNo} was received and is awaiting confirmation.`,
         href: "/appointments",
@@ -238,6 +276,7 @@ export function cancelAppointment(id: string) {
     notifications: [
       newNotification({
         type: "appointment",
+        tag: "Updated",
         title: "Appointment cancelled",
         message: "Your appointment was cancelled.",
         href: "/appointments",
@@ -266,6 +305,7 @@ export function rescheduleAppointment(id: string, date: string, time: string) {
     notifications: [
       newNotification({
         type: "appointment",
+        tag: "Updated",
         title: "Reschedule requested",
         message: "Your new appointment schedule is awaiting confirmation.",
         href: "/appointments",

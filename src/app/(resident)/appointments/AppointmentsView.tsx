@@ -1,29 +1,54 @@
 "use client";
 
-import { CalendarDays, CalendarPlus, Info } from "lucide-react";
+import { CalendarDays, CircleCheck, Info } from "lucide-react";
 import { useState } from "react";
 import { AppointmentCard } from "@/components/appointments/AppointmentCard";
-import { AppointmentFormDialog } from "@/components/appointments/AppointmentForm";
+import { BookingForm, RescheduleDialog } from "@/components/appointments/AppointmentForm";
 import { useResidentData } from "@/components/layout/ResidentShell";
 import { Button } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/Card";
+import { EmptyState, SectionTitle } from "@/components/ui/Card";
+import { UnderlineTabs } from "@/components/ui/DataTable";
 import { ConfirmDialog, Dialog } from "@/components/ui/Dialog";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { AppointmentStatusBadge } from "@/components/ui/StatusBadge";
 import { useToast } from "@/components/ui/Toast";
 import { APPOINTMENT_RULES } from "@/lib/config/appointments";
 import { cancelAppointment, requestAppointment, rescheduleAppointment } from "@/lib/store/portal-store";
 import type { Appointment } from "@/lib/types";
-import { cn, formatCalendarDate, formatDateTime, formatTime, toYMD } from "@/lib/utils";
+import { formatCalendarDate, formatDateTime, formatSlot, toYMD } from "@/lib/utils";
 
 type Tab = "upcoming" | "previous";
 
+function AppointmentSummary({ a }: { a: Appointment }) {
+  return (
+    <dl className="grid gap-3 text-sm sm:grid-cols-2">
+      {[
+        ["Service / Purpose", a.purpose],
+        ["Resident name", a.residentName],
+        ["Date", formatCalendarDate(a.date)],
+        ["Time", formatSlot(a.time, APPOINTMENT_RULES.slotMinutes)],
+      ].map(([k, v]) => (
+        <div key={k} className="rounded-lg bg-page px-3 py-2">
+          <dt className="text-xs font-semibold text-subtle">{k}</dt>
+          <dd className="font-medium text-ink">{v}</dd>
+        </div>
+      ))}
+      {a.notes && (
+        <div className="rounded-lg bg-page px-3 py-2 sm:col-span-2">
+          <dt className="text-xs font-semibold text-subtle">Notes for staff</dt>
+          <dd className="font-medium text-ink">{a.notes}</dd>
+        </div>
+      )}
+    </dl>
+  );
+}
+
 export function AppointmentsView() {
-  const { appointments } = useResidentData();
+  const { appointments, resident } = useResidentData();
   const toast = useToast();
   const [tab, setTab] = useState<Tab>("upcoming");
-  const [formOpen, setFormOpen] = useState(false);
-  const [viewing, setViewing] = useState<Appointment | null>(null);
+  const [booked, setBooked] = useState<Appointment | null>(null);
+  const [viewingId, setViewingId] = useState<string | null>(null);
   const [rescheduling, setRescheduling] = useState<Appointment | null>(null);
   const [cancelling, setCancelling] = useState<Appointment | null>(null);
   const [today] = useState(() => toYMD(new Date()));
@@ -32,98 +57,99 @@ export function AppointmentsView() {
   const upcoming = appointments.filter(isUpcoming).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
   const previous = appointments.filter((a) => !isUpcoming(a)).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
   const list = tab === "upcoming" ? upcoming : previous;
-
-  // Keep the details dialog in sync with store updates.
-  const viewingLive = viewing ? (appointments.find((a) => a.id === viewing.id) ?? null) : null;
+  const viewing = viewingId ? (appointments.find((a) => a.id === viewingId) ?? null) : null;
 
   return (
     <>
       <PageHeader
-        title="Appointments"
-        description="Schedule visits to the barangay hall and manage your bookings."
-        actions={
-          <Button size="lg" onClick={() => setFormOpen(true)}>
-            <CalendarPlus className="size-5" aria-hidden />
-            Request appointment
-          </Button>
-        }
+        title="Book an Appointment"
+        description="Choose a service, select a date and time, and confirm your visit before heading to the barangay."
       />
 
-      {APPOINTMENT_RULES.isDemo && (
-        <div className="mb-6 flex gap-3 rounded-xl border-l-4 border-status-amber bg-status-amber-bg px-4 py-3 text-sm text-status-amber">
-          <Info className="mt-0.5 size-5 shrink-0" aria-hidden />
-          <p>
-            <strong>Demonstration schedule.</strong> Time slots, available days and the {APPOINTMENT_RULES.minHoursBeforeChange}
-            -hour change window are placeholders until the barangay provides its official appointment rules.
-          </p>
-        </div>
-      )}
-
-      <div role="tablist" aria-label="Appointments" className="mb-6 flex gap-8 border-b border-line">
-        {(
-          [
-            ["upcoming", `Upcoming (${upcoming.length})`],
-            ["previous", `Previous (${previous.length})`],
-          ] as [Tab, string][]
-        ).map(([t, label]) => (
-          <button
-            key={t}
-            type="button"
-            role="tab"
-            aria-selected={tab === t}
-            aria-controls="apt-panel"
-            onClick={() => setTab(t)}
-            className={cn(
-              "-mb-px border-b-[3px] px-1 pb-3 text-base font-semibold focus-visible:outline-2 focus-visible:outline-brand-500 sm:text-lg",
-              tab === t ? "border-brand-500 text-brand-500" : "border-transparent text-muted hover:text-ink",
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      <div id="apt-panel" role="tabpanel" className="space-y-4">
-        {list.length === 0 ? (
-          <EmptyState
-            icon={<CalendarDays className="size-6" />}
-            title={tab === "upcoming" ? "No upcoming appointments" : "No previous appointments"}
-            action={
-              tab === "upcoming" ? <Button onClick={() => setFormOpen(true)}>Request appointment</Button> : undefined
-            }
-          />
-        ) : (
-          list.map((a) => (
-            <AppointmentCard
-              key={a.id}
-              appointment={a}
-              onView={() => setViewing(a)}
-              onReschedule={() => setRescheduling(a)}
-              onCancel={() => setCancelling(a)}
-            />
-          ))
-        )}
-      </div>
-
-      <AppointmentFormDialog
-        open={formOpen}
-        mode="new"
-        onClose={() => setFormOpen(false)}
+      <BookingForm
+        defaultName={`${resident.firstName} ${resident.lastName}`}
         onSubmit={(v) => {
-          const appt = requestAppointment({ purpose: v.purpose, date: v.date, time: v.time, notes: v.notes.trim() || undefined });
-          setFormOpen(false);
+          const appt = requestAppointment({
+            purpose: v.purpose,
+            residentName: v.residentName,
+            date: v.date,
+            time: v.time,
+            notes: v.notes || undefined,
+          });
           setTab("upcoming");
-          toast(`Appointment requested (${appt.referenceNo}). Awaiting confirmation.`);
+          setBooked(appt);
         }}
       />
 
-      <AppointmentFormDialog
+      {APPOINTMENT_RULES.isDemo && (
+        <p className="mt-4 flex gap-2 text-sm text-muted">
+          <Info className="mt-0.5 size-4 shrink-0 text-status-amber" aria-hidden />
+          Demo schedule: available days, time slots and the {APPOINTMENT_RULES.minHoursBeforeChange}-hour change window are placeholders
+          until the barangay provides its official appointment rules. Bookings are saved in this browser only.
+        </p>
+      )}
+
+      <section aria-labelledby="my-apt-title" className="mt-12">
+        <SectionTitle id="my-apt-title" className="mb-5">
+          My Appointments
+        </SectionTitle>
+        <UnderlineTabs
+          label="Appointments"
+          idPrefix="apt"
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { value: "upcoming", label: `Upcoming (${upcoming.length})` },
+            { value: "previous", label: `Previous (${previous.length})` },
+          ]}
+        />
+        <div id="apt-panel" role="tabpanel" aria-labelledby={`apt-tab-${tab}`} className="space-y-4">
+          {list.length === 0 ? (
+            <EmptyState
+              icon={<CalendarDays className="size-6" />}
+              title={tab === "upcoming" ? "No upcoming appointments" : "No previous appointments"}
+              description={tab === "upcoming" ? "Use the form above to book a visit." : undefined}
+            />
+          ) : (
+            list.map((a) => (
+              <AppointmentCard
+                key={a.id}
+                appointment={a}
+                onView={() => setViewingId(a.id)}
+                onReschedule={() => setRescheduling(a)}
+                onCancel={() => setCancelling(a)}
+              />
+            ))
+          )}
+        </div>
+      </section>
+
+      {/* Booking confirmation */}
+      <Dialog
+        open={!!booked}
+        onClose={() => setBooked(null)}
+        title="Appointment requested"
+        description={booked ? `Reference #: ${booked.referenceNo}` : undefined}
+        footer={<Button onClick={() => setBooked(null)}>Done</Button>}
+      >
+        {booked && (
+          <div className="space-y-4">
+            <p className="flex items-start gap-2 text-sm text-ink">
+              <CircleCheck className="mt-0.5 size-5 shrink-0 text-status-green" aria-hidden />
+              Your request is saved and waiting for confirmation from barangay staff. It now appears under Upcoming.
+            </p>
+            <AppointmentSummary a={booked} />
+            <p className="text-sm text-muted">{APPOINTMENT_RULES.arrivalNote}</p>
+            <p className="text-xs text-subtle">Demo: no booking system is connected, so the barangay has not received this request.</p>
+          </div>
+        )}
+      </Dialog>
+
+      <RescheduleDialog
         open={!!rescheduling}
-        mode="reschedule"
-        initial={rescheduling ?? undefined}
         onClose={() => setRescheduling(null)}
-        onSubmit={(v) => {
-          if (rescheduling) rescheduleAppointment(rescheduling.id, v.date, v.time);
+        onSubmit={(date, time) => {
+          if (rescheduling) rescheduleAppointment(rescheduling.id, date, time);
           setRescheduling(null);
           toast("Reschedule requested. Awaiting confirmation.");
         }}
@@ -135,7 +161,7 @@ export function AppointmentsView() {
         message={
           cancelling && (
             <>
-              {cancelling.purpose} on {formatCalendarDate(cancelling.date)} at {formatTime(cancelling.time)} will be cancelled.
+              {cancelling.purpose} on {formatCalendarDate(cancelling.date)}, {formatSlot(cancelling.time)} will be cancelled.
             </>
           )
         }
@@ -150,36 +176,18 @@ export function AppointmentsView() {
         }}
       />
 
-      <Dialog open={!!viewingLive} onClose={() => setViewing(null)} title={viewingLive?.purpose ?? ""} description={viewingLive ? `Reference #: ${viewingLive.referenceNo}` : undefined}>
-        {viewingLive && (
+      <Dialog open={!!viewing} onClose={() => setViewingId(null)} title={viewing?.purpose ?? ""} description={viewing ? `Reference #: ${viewing.referenceNo}` : undefined}>
+        {viewing && (
           <div className="space-y-5 text-sm">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-lg bg-page px-3 py-2">
-                <p className="text-xs font-semibold text-muted">Date</p>
-                <p className="font-medium">{formatCalendarDate(viewingLive.date)}</p>
-              </div>
-              <div className="rounded-lg bg-page px-3 py-2">
-                <p className="text-xs font-semibold text-muted">Time</p>
-                <p className="font-medium">{formatTime(viewingLive.time)}</p>
-              </div>
-              <div className="rounded-lg bg-page px-3 py-2">
-                <p className="text-xs font-semibold text-muted">Status</p>
-                <StatusBadge status={viewingLive.status} className="mt-1" />
-              </div>
-            </div>
-            {viewingLive.notes && (
-              <div>
-                <p className="font-bold text-brand-900">Notes</p>
-                <p className="mt-1 text-ink">{viewingLive.notes}</p>
-              </div>
-            )}
+            <AppointmentStatusBadge status={viewing.status} />
+            <AppointmentSummary a={viewing} />
             <div>
               <p className="mb-2 font-bold text-brand-900">History</p>
               <ol className="space-y-3 border-l-2 border-line pl-4">
-                {[...viewingLive.history].reverse().map((h, i) => (
+                {[...viewing.history].reverse().map((h, i) => (
                   <li key={i}>
                     <p className="text-ink">{h.note}</p>
-                    <p className="text-xs text-muted">{formatDateTime(h.date)}</p>
+                    <p className="text-xs text-subtle">{formatDateTime(h.date)}</p>
                   </li>
                 ))}
               </ol>

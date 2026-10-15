@@ -6,9 +6,69 @@ import { cn } from "@/lib/utils";
 import { Button } from "./Button";
 
 /**
- * Accessible modal built on the native <dialog> element
- * (focus trapping, Esc to close and inert background come for free).
+ * Native <dialog> shell: focus trapping, Esc to close and an inert page behind
+ * come for free. `Dialog` and the request form modal both build on it.
  */
+export function ModalShell({
+  open,
+  onClose,
+  labelledBy,
+  className,
+  children,
+  closeOnBackdrop = true,
+}: {
+  open: boolean;
+  onClose: () => void;
+  labelledBy: string;
+  className?: string;
+  children: ReactNode;
+  closeOnBackdrop?: boolean;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  // Set while we close the dialog ourselves, so that close doesn't count as the resident dismissing it.
+  const silentClose = useRef(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (open && !el.open) el.showModal();
+    if (!open && el.open) el.close();
+    // Next.js keeps visited pages mounted but hidden (React <Activity>), which runs this cleanup.
+    // A modal <dialog> left open would stay in the top layer and block the page now on screen,
+    // so close it quietly; the effect reopens it if the page is shown again.
+    return () => {
+      if (el.open) {
+        silentClose.current = true;
+        el.close();
+      }
+    };
+  }, [open]);
+
+  return (
+    <dialog
+      ref={ref}
+      aria-labelledby={labelledBy}
+      onClose={() => {
+        if (silentClose.current) {
+          silentClose.current = false;
+          return;
+        }
+        onClose();
+      }}
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
+      onClick={(e) => {
+        if (closeOnBackdrop && e.target === ref.current) onClose();
+      }}
+      className={cn("m-auto w-[calc(100%-1.5rem)] rounded-2xl bg-white p-0 text-ink shadow-2xl", className)}
+    >
+      {open && children}
+    </dialog>
+  );
+}
+
 export function Dialog({
   open,
   onClose,
@@ -26,37 +86,16 @@ export function Dialog({
   footer?: ReactNode;
   size?: "sm" | "md" | "lg";
 }) {
-  const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (open && !el.open) el.showModal();
-    if (!open && el.open) el.close();
-  }, [open]);
-
   return (
-    <dialog
-      ref={ref}
-      aria-labelledby={titleId}
+    <ModalShell
+      open={open}
       onClose={onClose}
-      onCancel={(e) => {
-        e.preventDefault();
-        onClose();
-      }}
-      onClick={(e) => {
-        // click on the backdrop closes the dialog
-        if (e.target === ref.current) onClose();
-      }}
-      className={cn(
-        "m-auto w-[calc(100%-1.5rem)] rounded-2xl bg-white p-0 text-ink shadow-2xl backdrop:backdrop-blur-[1px]",
-        size === "sm" && "max-w-md",
-        size === "md" && "max-w-xl",
-        size === "lg" && "max-w-3xl",
-      )}
+      labelledBy={titleId}
+      className={cn(size === "sm" && "max-w-md", size === "md" && "max-w-xl", size === "lg" && "max-w-3xl")}
     >
-      {open && (
+      {(
         <div className="flex max-h-[85dvh] flex-col">
           <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4 sm:px-6">
             <div className="min-w-0">
@@ -82,7 +121,7 @@ export function Dialog({
           )}
         </div>
       )}
-    </dialog>
+    </ModalShell>
   );
 }
 

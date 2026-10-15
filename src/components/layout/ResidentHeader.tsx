@@ -34,7 +34,7 @@ export function ResidentHeader({
   const fullName = `${resident.firstName} ${resident.lastName}`;
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-line bg-white px-4 sm:h-20 sm:px-6 lg:px-12">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-line bg-white px-4 sm:h-20 sm:px-6 lg:px-10">
       <button
         type="button"
         onClick={onOpenMenu}
@@ -44,17 +44,10 @@ export function ResidentHeader({
         <Menu className="size-6" aria-hidden />
       </button>
 
-      <p className="min-w-0 flex-1 truncate text-lg font-bold text-brand-500 sm:text-2xl">
+      <p className="min-w-0 flex-1 truncate text-lg font-semibold text-brand-500 sm:text-xl lg:text-[1.375rem]">
         <span className="sm:hidden">Baesa E-Services</span>
         <span className="hidden sm:inline">Barangay Baesa E-Services</span>
       </p>
-
-      <span
-        className="hidden rounded-full bg-status-amber-bg px-3 py-1 text-xs font-semibold text-status-amber md:inline"
-        title="Data is stored in this browser only. No backend is connected yet."
-      >
-        Demo mode
-      </span>
 
       <NotificationBell notifications={notifications} />
 
@@ -72,7 +65,7 @@ export function ResidentHeader({
           </span>
           <span className="hidden text-left leading-tight sm:block">
             <span className="block font-semibold text-ink">{fullName}</span>
-            <span className="block text-sm text-muted">Barangay Resident</span>
+            <span className="block text-sm text-subtle">Barangay Resident</span>
           </span>
         </button>
         {profileOpen && (

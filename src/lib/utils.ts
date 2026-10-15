@@ -43,6 +43,38 @@ export function formatTime(hhmm: string): string {
   return `${hour}:${String(m).padStart(2, "0")} ${suffix}`;
 }
 
+/** "09:00" → "09:00 AM - 09:30 AM" (slot label format from the appointment reference). */
+export function formatSlot(hhmm: string, minutes = 30): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  const end = h * 60 + m + minutes;
+  const pad = (hh: number, mm: number) => {
+    const suffix = hh >= 12 ? "PM" : "AM";
+    const h12 = hh % 12 === 0 ? 12 : hh % 12;
+    return `${String(h12).padStart(2, "0")}:${String(mm).padStart(2, "0")} ${suffix}`;
+  };
+  return `${pad(h, m)} - ${pad(Math.floor(end / 60), end % 60)}`;
+}
+
+/** "Today, 9:41 AM" / "Yesterday, 4:20 PM" / "Oct 12, 2026" (notification table format). */
+export function formatNotificationDate(iso: string, now = new Date()): string {
+  const d = new Date(iso);
+  const dayKey = (x: Date) => x.toLocaleDateString("en-CA", { timeZone: TZ });
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: TZ });
+  const yesterday = new Date(now.getTime() - 86_400_000);
+  if (dayKey(d) === dayKey(now)) return `Today, ${time}`;
+  if (dayKey(d) === dayKey(yesterday)) return `Yesterday, ${time}`;
+  return formatDate(iso);
+}
+
+export function formatPeso(amount: number): string {
+  return `₱${amount.toLocaleString("en-PH", { maximumFractionDigits: 2 })}`;
+}
+
+/** Philippine mobile number: 09XXXXXXXXX or +639XXXXXXXXX (spaces and dashes allowed). */
+export function isValidPhMobile(value: string): boolean {
+  return /^(\+?63|0)9\d{9}$/.test(value.replace(/[\s-]/g, ""));
+}
+
 export function relativeTime(iso: string, now = Date.now()): string {
   const diff = Math.round((now - new Date(iso).getTime()) / 1000);
   if (diff < 60) return "just now";

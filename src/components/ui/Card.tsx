@@ -6,7 +6,7 @@ export function Card({ className, ...props }: ComponentProps<"div">) {
 }
 
 export function SectionTitle({ className, ...props }: ComponentProps<"h2">) {
-  return <h2 className={cn("text-xl font-bold text-brand-900 sm:text-2xl", className)} {...props} />;
+  return <h2 className={cn("text-xl font-bold text-brand-900 sm:text-[1.625rem]", className)} {...props} />;
 }
 
 export function EmptyState({ icon, title, description, action }: {
@@ -21,6 +21,16 @@ export function EmptyState({ icon, title, description, action }: {
       <p className="font-semibold text-ink">{title}</p>
       {description && <p className="mt-1 max-w-md text-sm text-muted">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
+    </div>
+  );
+}
+
+/** Light green info panel with a strong left edge ("About this map", "Stay informed"). */
+export function InfoPanel({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn("rounded-2xl border-l-[5px] border-brand-500 bg-[#e6f1ea] px-6 py-5 sm:px-9 sm:py-6", className)}>
+      <p className="text-lg font-bold text-brand-900">{title}</p>
+      <div className="mt-1.5 text-base leading-relaxed text-muted">{children}</div>
     </div>
   );
 }

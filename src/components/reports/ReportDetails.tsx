@@ -1,101 +1,109 @@
 "use client";
 
-import { Camera, MapPin } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { ImageOff, MapPin } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
-import { StatusBadge } from "@/components/ui/StatusBadge";
-import { categoryColor } from "@/lib/config/reports";
+import { ReportStatusBadge } from "@/components/ui/StatusBadge";
+import { categoryColor, categoryLabel } from "@/lib/config/reports";
 import type { CommunityReport } from "@/lib/types";
 import { formatCoords, formatDate, formatDateTime } from "@/lib/utils";
 
-export function CategoryTag({ category }: { category: CommunityReport["category"] }) {
+export function CategoryDot({ report, className }: { report: Pick<CommunityReport, "category" | "otherCategory">; className?: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1 text-xs font-semibold text-ink">
-      <span className="size-2.5 rounded-full" style={{ backgroundColor: categoryColor(category) }} aria-hidden />
-      {category}
+    <span className={className}>
+      <span className="mr-2 inline-block size-2 rounded-full align-middle" style={{ backgroundColor: categoryColor(report.category) }} aria-hidden />
+      {categoryLabel(report.category, report.otherCategory)}
     </span>
   );
 }
 
-export function ReportCard({ report, onView }: { report: CommunityReport; onView: () => void }) {
-  const r = report;
+export function locationLine(r: CommunityReport) {
+  return r.location.area ? `${r.location.label}, ${r.location.area}` : r.location.label;
+}
+
+/** Mobile row for My Reports (desktop uses the table). */
+export function ReportCard({ report: r, onView }: { report: CommunityReport; onView: () => void }) {
   return (
-    <Card className="p-5 sm:p-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <CategoryTag category={r.category} />
-            <span className="text-xs font-semibold text-muted uppercase">{r.kind}</span>
-          </div>
-          <h3 className="mt-2 text-lg font-bold text-ink">{r.title}</h3>
-          <p className="mt-0.5 text-sm text-muted">Reference #: {r.referenceNo}</p>
-        </div>
-        <StatusBadge status={r.status} className="w-fit" />
-      </div>
-      <p className="mt-3 line-clamp-2 text-sm text-ink/80">{r.description}</p>
-      <div className="mt-4 flex flex-col gap-3 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
-        <span className="flex min-w-0 items-center gap-1.5">
-          <MapPin className="size-4 shrink-0 text-brand-500" aria-hidden />
-          <span className="truncate">{r.location.label}</span>
-          <span className="shrink-0">· {formatDate(r.submittedAt)}</span>
+    <button
+      type="button"
+      onClick={onView}
+      className="block w-full rounded-2xl border border-line bg-white p-4 text-left transition-colors hover:border-brand-200 focus-visible:outline-2 focus-visible:outline-brand-500"
+    >
+      <span className="flex items-start justify-between gap-3">
+        <span className="min-w-0">
+          <span className="block font-semibold text-ink">{r.title}</span>
+          <span className="block text-sm text-subtle">{r.referenceNo}</span>
         </span>
-        <Button variant="soft" size="sm" onClick={onView} className="w-full sm:w-auto">
-          View details
-        </Button>
-      </div>
-    </Card>
+        <ReportStatusBadge status={r.status} className="shrink-0" />
+      </span>
+      <span className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
+        <CategoryDot report={r} />
+        <span className="inline-flex items-center gap-1">
+          <MapPin className="size-3.5" aria-hidden />
+          {locationLine(r)}
+        </span>
+        <span>{formatDate(r.submittedAt)}</span>
+      </span>
+    </button>
   );
 }
 
-export function ReportDetailsDialog({ report, onClose }: { report: CommunityReport | null; onClose: () => void }) {
+export function ReportDetailsDialog({ report: r, onClose }: { report: CommunityReport | null; onClose: () => void }) {
   return (
-    <Dialog open={!!report} onClose={onClose} title={report?.title ?? ""} description={report ? `Reference #: ${report.referenceNo}` : undefined} size="lg">
-      {report && (
+    <Dialog open={!!r} onClose={onClose} title={r?.title ?? ""} description={r ? `${r.kind} · ${r.referenceNo}` : undefined} size="lg">
+      {r && (
         <div className="space-y-5 text-sm">
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={report.status} />
-            <CategoryTag category={report.category} />
-            <span className="text-muted">{report.kind}</span>
+          <div className="flex flex-wrap items-center gap-3">
+            <ReportStatusBadge status={r.status} />
+            <CategoryDot report={r} className="font-medium text-ink" />
+            {!r.isMine && <span className="text-subtle">Filed by another resident. Personal details are hidden.</span>}
           </div>
+
           <div>
             <h3 className="font-bold text-brand-900">Description</h3>
-            <p className="mt-1 whitespace-pre-line text-ink">{report.description}</p>
+            <p className="mt-1 whitespace-pre-line text-ink">{r.description}</p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg bg-page px-3 py-2">
-              <p className="text-xs font-semibold text-muted">Location</p>
-              <p className="font-medium text-ink">{report.location.label}</p>
-              <p className="text-xs text-muted">{formatCoords(report.location.lat, report.location.lng)}</p>
-            </div>
-            <div className="rounded-lg bg-page px-3 py-2">
-              <p className="text-xs font-semibold text-muted">Submitted</p>
-              <p className="font-medium text-ink">{formatDateTime(report.submittedAt)}</p>
-            </div>
-            {report.photoName && (
-              <div className="rounded-lg bg-page px-3 py-2 sm:col-span-2">
-                <p className="flex items-center gap-1 text-xs font-semibold text-muted">
-                  <Camera className="size-3.5" aria-hidden /> Photo
-                </p>
-                <p className="font-medium break-all text-ink">{report.photoName}</p>
-              </div>
-            )}
-          </div>
+
           <div>
-            <h3 className="mb-2 font-bold text-brand-900">Updates</h3>
-            {report.updates.length ? (
-              <ol className="space-y-3 border-l-2 border-line pl-4">
-                {[...report.updates].reverse().map((u, i) => (
-                  <li key={i}>
-                    <p className="text-ink">{u.note}</p>
-                    <p className="text-xs text-muted">{formatDateTime(u.date)}</p>
-                  </li>
-                ))}
-              </ol>
+            <h3 className="mb-2 font-bold text-brand-900">Photo</h3>
+            {r.photo?.dataUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- photo stored in this browser for the demo
+              <img src={r.photo.dataUrl} alt={`Photo attached to "${r.title}"`} className="max-h-72 w-auto max-w-full rounded-xl border border-line object-contain" />
+            ) : r.photo ? (
+              <p className="flex items-center gap-2 text-muted">
+                <ImageOff className="size-4" aria-hidden />
+                {r.photo.name} (image not kept: browser storage is full)
+              </p>
             ) : (
-              <p className="text-muted">No updates yet.</p>
+              <p className="text-muted">No photo attached.</p>
             )}
-            <p className="mt-3 text-xs text-muted">Updates are simulated in this demo until the barangay backend is connected.</p>
+          </div>
+
+          <dl className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-lg bg-page px-3 py-2">
+              <dt className="text-xs font-semibold text-subtle">Location</dt>
+              <dd className="font-medium text-ink">{locationLine(r)}</dd>
+              <dd className="text-xs text-subtle">
+                {formatCoords(r.location.lat, r.location.lng)}
+                {r.isSample && " · demonstration position"}
+              </dd>
+            </div>
+            <div className="rounded-lg bg-page px-3 py-2">
+              <dt className="text-xs font-semibold text-subtle">Submitted</dt>
+              <dd className="font-medium text-ink">{formatDateTime(r.submittedAt)}</dd>
+            </div>
+          </dl>
+
+          <div>
+            <h3 className="mb-2 font-bold text-brand-900">Status updates</h3>
+            <ol className="space-y-3 border-l-2 border-line pl-4">
+              {[...r.updates].reverse().map((u, i) => (
+                <li key={i}>
+                  <p className="text-ink">{u.note}</p>
+                  <p className="text-xs text-subtle">{formatDateTime(u.date)}</p>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-3 text-xs text-subtle">Updates will come from barangay staff once the system is connected.</p>
           </div>
         </div>
       )}
