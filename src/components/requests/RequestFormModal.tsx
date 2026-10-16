@@ -241,7 +241,14 @@ function RequestForm({
 
   return (
     <form onSubmit={onSubmit} noValidate className="flex max-h-[94dvh] flex-col">
-      <div ref={scrollRef} className="overflow-y-auto px-5 pt-7 pb-6 sm:px-10 sm:pt-8">
+      {/*
+        `relative` makes this scroll area the containing block for the visually hidden
+        (position: absolute) inputs and labels inside the form. Without it they are
+        positioned against the <dialog> itself, sit at their unscrolled depth and stretch
+        the dialog, leaving a large blank area below the Submit button.
+        `min-h-0` lets the area shrink inside the flex column so only it scrolls.
+      */}
+      <div ref={scrollRef} className="relative min-h-0 overflow-y-auto px-5 pt-7 pb-6 sm:px-10 sm:pt-8">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 id={titleId} className="text-2xl font-extrabold tracking-tight text-brand-900 sm:text-[2.125rem]">
