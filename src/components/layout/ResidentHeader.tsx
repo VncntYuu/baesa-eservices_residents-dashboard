@@ -1,36 +1,24 @@
 "use client";
 
-import { Menu, RotateCcw } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Menu } from "lucide-react";
 import type { AppNotification, ResidentProfile } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { NotificationBell } from "./NotificationBell";
+import { ResidentAvatar } from "./ResidentAvatar";
 
 export function ResidentHeader({
   resident,
   notifications,
   onOpenMenu,
-  onResetDemo,
 }: {
   resident: ResidentProfile;
   notifications: AppNotification[];
   onOpenMenu: () => void;
-  onResetDemo: () => void;
 }) {
-  const [profileOpen, setProfileOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!profileOpen) return;
-    const onDown = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setProfileOpen(false);
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setProfileOpen(false);
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [profileOpen]);
-
+  const pathname = usePathname();
+  const onProfile = pathname === "/profile";
   const fullName = `${resident.firstName} ${resident.lastName}`;
 
   return (
@@ -51,47 +39,22 @@ export function ResidentHeader({
 
       <NotificationBell notifications={notifications} />
 
-      <div ref={ref} className="relative">
-        <button
-          type="button"
-          onClick={() => setProfileOpen((o) => !o)}
-          aria-expanded={profileOpen}
-          aria-haspopup="true"
-          aria-label={`Profile: ${fullName}`}
-          className="flex items-center gap-3 rounded-full bg-brand-50 p-1 transition-colors hover:bg-brand-100 focus-visible:outline-2 focus-visible:outline-brand-500 sm:py-1.5 sm:pr-5 sm:pl-1.5"
-        >
-          <span className="grid size-9 place-items-center rounded-full bg-brand-500 text-base font-bold text-white sm:size-11 sm:text-lg">
-            {resident.firstName.charAt(0)}
-          </span>
-          <span className="hidden text-left leading-tight sm:block">
-            <span className="block font-semibold text-ink">{fullName}</span>
-            <span className="block text-sm text-subtle">Barangay Resident</span>
-          </span>
-        </button>
-        {profileOpen && (
-          <div className="absolute right-0 z-40 mt-2 w-64 rounded-2xl border border-line bg-white p-2 shadow-xl">
-            <div className="px-3 py-2">
-              <p className="font-semibold text-ink">{fullName}</p>
-              <p className="text-sm text-muted">{resident.email}</p>
-              <p className="mt-1 text-xs text-muted">
-                {resident.address}, {resident.purok}
-              </p>
-            </div>
-            <hr className="my-1 border-line" />
-            <button
-              type="button"
-              onClick={() => {
-                setProfileOpen(false);
-                onResetDemo();
-              }}
-              className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-ink hover:bg-brand-50"
-            >
-              <RotateCcw className="size-4 text-muted" aria-hidden />
-              Reset demo data
-            </button>
-          </div>
+      {/* Opens My Profile; outlined in green while that page is open (reference). */}
+      <Link
+        href="/profile"
+        aria-label={`My profile: ${fullName}`}
+        aria-current={onProfile ? "page" : undefined}
+        className={cn(
+          "flex items-center gap-3 rounded-full border-2 bg-brand-50 p-0.5 transition-colors hover:bg-brand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 sm:py-1 sm:pr-5 sm:pl-1",
+          onProfile ? "border-brand-500" : "border-transparent",
         )}
-      </div>
+      >
+        <ResidentAvatar resident={resident} className="size-9 text-base sm:size-11 sm:text-lg" />
+        <span className="hidden text-left leading-tight sm:block">
+          <span className="block font-semibold text-ink">{fullName}</span>
+          <span className="block text-sm text-subtle">Barangay Resident</span>
+        </span>
+      </Link>
     </header>
   );
 }

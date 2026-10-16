@@ -51,18 +51,32 @@ export function createSeedData(now = new Date()): PortalData {
     return toYMD(d);
   };
 
+  // Sample resident (values follow the My Profile design reference).
   const resident: ResidentProfile = {
     id: "res-0001",
+    residentId: "BAESA-2026-00127",
+    memberSince: "2026-01-12T09:00:00+08:00",
     firstName: "Maria",
     middleName: "Reyes",
     lastName: "Santos",
     suffix: "",
+    sex: "Female",
+    nationality: "Filipino",
     email: "maria.santos@example.com",
-    contactNumber: "0917 000 0000",
-    address: "24 Ramos Street, Barangay Baesa, Quezon City",
-    purok: "Purok 3",
-    birthDate: "1994-03-18",
+    contactNumber: "+63 917 123 4567",
+    address: "24 Sampaguita Street, Barangay Baesa, Quezon City",
+    purok: "Purok 2",
+    yearsOfResidency: "5",
+    registeredVoter: "Yes",
+    birthDate: "1994-03-14",
     civilStatus: "Single",
+    validId: {
+      idType: "Driver's License",
+      fileName: "valid_id.jpg",
+      mimeType: "image/jpeg",
+      size: 412_000,
+      uploadedAt: "2026-05-05T10:00:00+08:00",
+    },
   };
 
   const applicant: ApplicantInfo = {

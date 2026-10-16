@@ -1,14 +1,14 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { ConfirmDialog } from "@/components/ui/Dialog";
-import { ToastProvider, useToast } from "@/components/ui/Toast";
+import { ToastProvider } from "@/components/ui/Toast";
 import { LOGIN_PATH } from "@/lib/config/navigation";
 import type { PortalData } from "@/lib/mock-data";
 import { signOutDemo, useDemoSession } from "@/lib/store/demo-session";
-import { resetDemoData, usePortalData } from "@/lib/store/portal-store";
+import { usePortalData } from "@/lib/store/portal-store";
 import { cn } from "@/lib/utils";
 import { ResidentHeader } from "./ResidentHeader";
 import { ResidentSidebar } from "./ResidentSidebar";
@@ -32,12 +32,12 @@ export function ResidentShell({ children }: { children: ReactNode }) {
 
 function ShellInner({ children }: { children: ReactNode }) {
   const router = useRouter();
+  // My Profile is a full-width page without the sidebar (design reference); "Return to Dashboard" leads back.
+  const fullWidth = usePathname() === "/profile";
   const session = useDemoSession();
   const data = usePortalData();
-  const toast = useToast();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
-  const [confirmReset, setConfirmReset] = useState(false);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
   // Demo route guard — real protection must happen on the server once auth exists.
@@ -88,7 +88,7 @@ function ShellInner({ children }: { children: ReactNode }) {
       </a>
 
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[17rem] lg:block">
+      <aside className={cn("fixed inset-y-0 left-0 z-40 hidden w-[17rem]", !fullWidth && "lg:block")}>
         <ResidentSidebar onLogout={openLogout} />
       </aside>
 
@@ -127,12 +127,11 @@ function ShellInner({ children }: { children: ReactNode }) {
         </div>
       </div>
 
-      <div className="flex min-h-dvh flex-col lg:pl-[17rem]">
+      <div className={cn("flex min-h-dvh flex-col", !fullWidth && "lg:pl-[17rem]")}>
         <ResidentHeader
           resident={data.resident}
           notifications={data.notifications}
           onOpenMenu={() => setDrawerOpen(true)}
-          onResetDemo={() => setConfirmReset(true)}
         />
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
           {children}
@@ -164,18 +163,6 @@ function ShellInner({ children }: { children: ReactNode }) {
         }}
       />
 
-      <ConfirmDialog
-        open={confirmReset}
-        title="Reset demo data?"
-        message="This restores the sample requests, reports, appointments and notifications stored in this browser."
-        confirmLabel="Reset"
-        onCancel={() => setConfirmReset(false)}
-        onConfirm={() => {
-          setConfirmReset(false);
-          resetDemoData();
-          toast("Demo data has been reset.", "info");
-        }}
-      />
     </PortalDataContext.Provider>
   );
 }

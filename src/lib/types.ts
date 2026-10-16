@@ -8,18 +8,40 @@ export type ISODateString = string;
 
 /* ----------------------------- Resident ----------------------------- */
 
+export interface ProfileIdDocument {
+  /** e.g. "Driver's License" */
+  idType: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: ISODateString;
+  /** Downscaled image kept in this browser for the demo (not kept for PDFs). */
+  previewDataUrl?: string;
+}
+
 export interface ResidentProfile {
   id: string;
+  /** Barangay-issued resident number (sample). */
+  residentId: string;
+  memberSince: ISODateString;
   firstName: string;
   lastName: string;
   middleName?: string;
   suffix?: string;
+  sex: string;
+  nationality: string;
   email: string;
   contactNumber: string;
   address: string;
   purok: string;
+  /** Whole years living in the barangay, as typed (e.g. "5"). */
+  yearsOfResidency: string;
+  registeredVoter: "Yes" | "No" | "";
   birthDate: string; // YYYY-MM-DD
   civilStatus: string;
+  /** Small profile photo kept in this browser for the demo. */
+  photoDataUrl?: string;
+  validId?: ProfileIdDocument;
 }
 
 /* ------------------------- Document requests ------------------------ */

@@ -24,7 +24,9 @@ import type {
   GeoLocation,
   PaymentMethod,
   PaymentStatus,
+  ProfileIdDocument,
   ReportKind,
+  ResidentProfile,
   ServiceId,
   SubmittedDetail,
   UploadedFileInfo,
@@ -39,7 +41,12 @@ const listeners = new Set<() => void>();
 function load(): PortalData {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as PortalData;
+    if (raw) {
+      const saved = JSON.parse(raw) as PortalData;
+      // Data saved before the My Profile page existed lacks the newer profile fields;
+      // fill them from the sample profile so nothing the resident entered is lost.
+      return { ...saved, resident: { ...createSeedData().resident, ...saved.resident } };
+    }
   } catch {
     /* storage unavailable or corrupted — fall back to seed */
   }
@@ -326,6 +333,47 @@ export function markNotificationRead(id: string, read = true) {
 export function markAllNotificationsRead() {
   // API: POST /api/resident/notifications/read-all
   update((d) => ({ ...d, notifications: d.notifications.map((n) => ({ ...n, read: true })) }));
+}
+
+/* ------------------------------- Profile ------------------------------- */
+
+export type ProfilePatch = Partial<Omit<ResidentProfile, "id" | "residentId" | "memberSince">>;
+
+export function updateProfile(patch: ProfilePatch, message = "Your profile details were updated.") {
+  // API: PATCH /api/resident/profile
+  update((d) => ({
+    ...d,
+    resident: { ...d.resident, ...patch },
+    notifications: [
+      newNotification({ type: "request", tag: "Updated", title: "Profile updated", message, href: "/profile" }),
+      ...d.notifications,
+    ],
+  }));
+}
+
+export function setProfilePhoto(photoDataUrl: string | undefined) {
+  // API: PUT /api/resident/profile/photo
+  update((d) => ({ ...d, resident: { ...d.resident, photoDataUrl } }));
+}
+
+export function setProfileValidId(validId: ProfileIdDocument | undefined) {
+  // API: PUT /api/resident/profile/valid-id (multipart)
+  update((d) => ({
+    ...d,
+    resident: { ...d.resident, validId },
+    notifications: validId
+      ? [
+          newNotification({
+            type: "request",
+            tag: "Updated",
+            title: "Valid ID uploaded",
+            message: `${validId.idType} (${validId.fileName}) was added to your profile.`,
+            href: "/profile",
+          }),
+          ...d.notifications,
+        ]
+      : d.notifications,
+  }));
 }
 
 export function resetDemoData() {

@@ -13,6 +13,7 @@ import { DashboardView } from "@/app/(resident)/dashboard/DashboardView";
 import { DocumentRequestView } from "@/app/(resident)/document-request/DocumentRequestView";
 import { MyRequestsView } from "@/app/(resident)/my-requests/MyRequestsView";
 import { NotificationsView } from "@/app/(resident)/notifications/NotificationsView";
+import { ProfileView } from "@/app/(resident)/profile/ProfileView";
 import { LoginView } from "@/app/login/LoginView";
 import { ResidentShell } from "@/components/layout/ResidentShell";
 import { LinkButton } from "@/components/ui/Button";
@@ -28,6 +29,7 @@ const TITLES: Record<string, string> = {
   appointments: "Appointments",
   announcements: "Announcements",
   notifications: "Notifications",
+  profile: "My Profile",
   login: "Sign in",
 };
 
@@ -66,6 +68,8 @@ function residentPage(pathname: string) {
       return sub ? <NotFound /> : <AppointmentsView />;
     case "announcements":
       return sub ? <AnnouncementDetailView id={sub} /> : <AnnouncementsView />;
+    case "profile":
+      return sub ? <NotFound /> : <ProfileView />;
     case "notifications":
       return sub ? <NotFound /> : <NotificationsView />;
     default:
